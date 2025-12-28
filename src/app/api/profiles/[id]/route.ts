@@ -15,6 +15,17 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Helper to map field visibility to phone/email visibility
+// FieldVisibility uses 'public' but DB uses 'full'
+function mapToContactVisibility(visibility: string | undefined): PhoneVisibility | null {
+  if (!visibility) return null;
+  if (visibility === 'public' || visibility === 'full') return 'full';
+  if (visibility === 'masked') return 'masked';
+  if (visibility === 'after_connect') return 'after_connect';
+  if (visibility === 'hidden') return 'hidden';
+  return null;
+}
+
 // GET /api/profiles/[id] - Get single profile
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -103,8 +114,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         theme_color = COALESCE(${body.theme_color ?? null}, theme_color),
         is_public = COALESCE(${body.is_public ?? null}, is_public),
         visibility = COALESCE(${(body.visibility as ProfileVisibility) ?? null}, visibility),
-        phone_visibility = COALESCE(${(body.phone_visibility as PhoneVisibility) ?? null}, phone_visibility),
-        email_visibility = COALESCE(${(body.email_visibility as EmailVisibility) ?? null}, email_visibility),
+        phone_visibility = COALESCE(${mapToContactVisibility(body.phone_visibility)}, phone_visibility),
+        email_visibility = COALESCE(${mapToContactVisibility(body.email_visibility)}, email_visibility),
         cta_type = COALESCE(${(body.cta_type as CTAType) ?? null}, cta_type),
         cta_url = COALESCE(${body.cta_url ?? null}, cta_url),
         internal_notes = COALESCE(${body.internal_notes ?? null}, internal_notes),

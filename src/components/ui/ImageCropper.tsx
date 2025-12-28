@@ -9,20 +9,13 @@ interface ImageCropperProps {
   imageFile: File;
   onCrop: (croppedBlob: Blob) => void;
   onCancel: () => void;
-  aspectRatio?: number; // 1 for 1:1 square
-}
-
-interface CropArea {
-  x: number;
-  y: number;
-  size: number;
+  aspectRatio?: number;
 }
 
 export function ImageCropper({
   imageFile,
   onCrop,
   onCancel,
-  aspectRatio = 1,
 }: ImageCropperProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,6 +27,7 @@ export function ImageCropper({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
+  const [containerSize, setContainerSize] = useState(300);
 
   // Load image from file
   useEffect(() => {
@@ -44,7 +38,7 @@ export function ImageCropper({
     reader.readAsDataURL(imageFile);
   }, [imageFile]);
 
-  // Load image element
+  // Load image element and center it
   useEffect(() => {
     if (!imageSrc) return;
 
@@ -53,15 +47,22 @@ export function ImageCropper({
       setImageElement(img);
       setImageLoaded(true);
 
-      // Calculate initial zoom to fit image
       if (containerRef.current) {
-        const containerSize = Math.min(
-          containerRef.current.clientWidth,
-          containerRef.current.clientHeight
-        );
-        const imageSize = Math.max(img.width, img.height);
-        const initialZoom = containerSize / imageSize;
+        const contSize = containerRef.current.clientWidth;
+        setContainerSize(contSize);
+
+        // Calculate initial zoom to fill the crop circle (80% of container)
+        const cropDiameter = contSize * 0.8;
+        const minDimension = Math.min(img.width, img.height);
+        const initialZoom = cropDiameter / minDimension;
+
         setZoom(Math.max(initialZoom, 0.5));
+
+        // Center the image
+        setPosition({
+          x: (contSize - img.width * initialZoom) / 2,
+          y: (contSize - img.height * initialZoom) / 2,
+        });
       }
     };
     img.src = imageSrc;
@@ -97,10 +98,36 @@ export function ImageCropper({
     setIsDragging(false);
   }, []);
 
-  // Handle zoom
+  // Handle zoom with re-centering
   const handleZoom = useCallback((delta: number) => {
-    setZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)));
-  }, []);
+    setZoom((prev) => {
+      const newZoom = Math.max(0.3, Math.min(4, prev + delta));
+
+      // Re-center after zoom
+      if (imageElement && containerRef.current) {
+        const contSize = containerRef.current.clientWidth;
+        const centerX = contSize / 2;
+        const centerY = contSize / 2;
+
+        // Calculate current center of image
+        const currentCenterX = position.x + (imageElement.width * prev) / 2;
+        const currentCenterY = position.y + (imageElement.height * prev) / 2;
+
+        // Calculate offset from container center
+        const offsetX = centerX - currentCenterX;
+        const offsetY = centerY - currentCenterY;
+
+        // Adjust position to maintain center point
+        const zoomRatio = newZoom / prev;
+        setPosition({
+          x: position.x - (imageElement.width * (newZoom - prev)) / 2 + offsetX * (1 - zoomRatio),
+          y: position.y - (imageElement.height * (newZoom - prev)) / 2 + offsetY * (1 - zoomRatio),
+        });
+      }
+
+      return newZoom;
+    });
+  }, [imageElement, position]);
 
   // Handle rotation
   const handleRotate = useCallback(() => {
@@ -122,35 +149,60 @@ export function ImageCropper({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Output size (we'll use 1024 as max, server will resize)
+    // Output size
     const outputSize = 1024;
     canvas.width = outputSize;
     canvas.height = outputSize;
 
-    // Calculate crop area
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const cropSize = Math.min(containerRect.width, containerRect.height) * 0.8;
-    const cropX = (containerRect.width - cropSize) / 2;
-    const cropY = (containerRect.height - cropSize) / 2;
+    // Crop circle parameters (80% of container)
+    const cropDiameter = containerSize * 0.8;
+    const cropRadius = cropDiameter / 2;
+    const cropCenterX = containerSize / 2;
+    const cropCenterY = containerSize / 2;
 
-    // Clear canvas
+    // Clear canvas with white background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, outputSize, outputSize);
 
-    // Calculate source coordinates
-    const scale = outputSize / cropSize;
-    const scaledZoom = zoom * scale;
+    // Calculate scale factor
+    const scale = outputSize / cropDiameter;
 
-    // Center of crop area in image coordinates
-    const centerX = (cropX + cropSize / 2 - position.x) / zoom;
-    const centerY = (cropY + cropSize / 2 - position.y) / zoom;
-
+    // Save context and set up clipping (circular crop)
     ctx.save();
+    ctx.beginPath();
+    ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Calculate where to draw the image
+    // The crop area is centered in the container
+    // We need to figure out what part of the scaled/positioned image falls within the crop circle
+
+    const imgScaledWidth = imageElement.width * zoom;
+    const imgScaledHeight = imageElement.height * zoom;
+
+    // Position of crop circle's top-left corner relative to container
+    const cropLeft = cropCenterX - cropRadius;
+    const cropTop = cropCenterY - cropRadius;
+
+    // Where is the image relative to the crop circle?
+    const imgRelativeX = position.x - cropLeft;
+    const imgRelativeY = position.y - cropTop;
+
+    // Handle rotation
     ctx.translate(outputSize / 2, outputSize / 2);
     ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(scaledZoom, scaledZoom);
-    ctx.translate(-centerX, -centerY);
-    ctx.drawImage(imageElement, 0, 0);
+    ctx.translate(-outputSize / 2, -outputSize / 2);
+
+    // Draw image scaled to output size
+    ctx.drawImage(
+      imageElement,
+      imgRelativeX * scale,
+      imgRelativeY * scale,
+      imgScaledWidth * scale,
+      imgScaledHeight * scale
+    );
+
     ctx.restore();
 
     // Convert to blob
@@ -161,16 +213,16 @@ export function ImageCropper({
         }
       },
       'image/jpeg',
-      0.95
+      0.92
     );
-  }, [imageElement, zoom, rotation, position, onCrop]);
+  }, [imageElement, zoom, rotation, position, containerSize, onCrop]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-lg w-full mx-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold">برش تصویر</h3>
+          <h3 className="font-semibold">برش تصویر پروفایل</h3>
           <button
             onClick={onCancel}
             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
@@ -182,7 +234,7 @@ export function ImageCropper({
         {/* Crop Area */}
         <div
           ref={containerRef}
-          className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden cursor-move"
+          className="relative w-full aspect-square bg-gray-900 overflow-hidden cursor-move select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -193,53 +245,52 @@ export function ImageCropper({
           onWheel={handleWheel}
         >
           {/* Image */}
-          {imageSrc && (
-            <div
-              className="absolute"
+          {imageSrc && imageLoaded && (
+            <img
+              src={imageSrc}
+              alt="Crop preview"
+              className="absolute max-w-none pointer-events-none"
               style={{
-                transform: `translate(${position.x}px, ${position.y}px) rotate(${rotation}deg) scale(${zoom})`,
+                left: position.x,
+                top: position.y,
+                width: imageElement ? imageElement.width * zoom : 'auto',
+                height: imageElement ? imageElement.height * zoom : 'auto',
+                transform: `rotate(${rotation}deg)`,
                 transformOrigin: 'center center',
               }}
-            >
-              <img
-                src={imageSrc}
-                alt="Crop preview"
-                className="max-w-none"
-                draggable={false}
-              />
-            </div>
+              draggable={false}
+            />
           )}
 
-          {/* Crop overlay */}
+          {/* Crop overlay - dark outside, clear inside circle */}
           <div className="absolute inset-0 pointer-events-none">
-            {/* Dark corners */}
-            <div className="absolute inset-0 bg-black/50" />
-
-            {/* Clear center (crop area) */}
-            <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-transparent border-2 border-white rounded-full"
-              style={{
-                width: '80%',
-                height: '80%',
-                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
-              }}
-            />
-
-            {/* Grid lines */}
-            <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-white/30"
-              style={{ width: '80%', height: '80%' }}
-            >
-              <div className="absolute left-1/3 top-0 bottom-0 border-l border-white/30" />
-              <div className="absolute right-1/3 top-0 bottom-0 border-l border-white/30" />
-              <div className="absolute top-1/3 left-0 right-0 border-t border-white/30" />
-              <div className="absolute bottom-1/3 left-0 right-0 border-t border-white/30" />
-            </div>
+            <svg className="w-full h-full">
+              <defs>
+                <mask id="cropMask">
+                  <rect width="100%" height="100%" fill="white" />
+                  <circle cx="50%" cy="50%" r="40%" fill="black" />
+                </mask>
+              </defs>
+              <rect
+                width="100%"
+                height="100%"
+                fill="rgba(0,0,0,0.6)"
+                mask="url(#cropMask)"
+              />
+              <circle
+                cx="50%"
+                cy="50%"
+                r="40%"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+              />
+            </svg>
           </div>
 
           {/* Loading state */}
           {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
@@ -250,7 +301,7 @@ export function ImageCropper({
           {/* Zoom slider */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => handleZoom(-0.2)}
+              onClick={() => handleZoom(-0.15)}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
             >
               <ZoomOut className="w-5 h-5" />
@@ -258,24 +309,37 @@ export function ImageCropper({
 
             <input
               type="range"
-              min="0.5"
-              max="3"
-              step="0.1"
+              min="0.3"
+              max="4"
+              step="0.05"
               value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+              onChange={(e) => {
+                const newZoom = parseFloat(e.target.value);
+                if (imageElement && containerRef.current) {
+                  const contSize = containerRef.current.clientWidth;
+                  // Recenter on zoom change from slider
+                  setPosition({
+                    x: (contSize - imageElement.width * newZoom) / 2,
+                    y: (contSize - imageElement.height * newZoom) / 2,
+                  });
+                }
+                setZoom(newZoom);
+              }}
+              className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
             />
 
             <button
-              onClick={() => handleZoom(0.2)}
+              onClick={() => handleZoom(0.15)}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
             >
               <ZoomIn className="w-5 h-5" />
             </button>
 
+            <div className="w-px h-6 bg-border mx-1" />
+
             <button
               onClick={handleRotate}
-              className="p-2 rounded-lg hover:bg-muted transition-colors mr-2"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
             >
               <RotateCw className="w-5 h-5" />
             </button>
