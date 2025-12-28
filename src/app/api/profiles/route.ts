@@ -121,13 +121,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique slug
-    const baseSlug = body.title
-      .toLowerCase()
-      .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-      .slice(0, 30);
-    const slug = `${baseSlug}-${nanoid(6)}`;
+    // Generate unique slug (English only for URL compatibility)
+    // Use nanoid for unique, URL-safe slugs
+    const slug = `profile-${nanoid(10)}`;
 
     // Create profile
     const [profile] = await sql<Profile[]>`

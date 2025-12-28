@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { QRCodeModal } from '@/components/profile/QRCodeModal';
+import { ProfilePreviewModal } from '@/components/profile/ProfilePreviewModal';
 import { cn } from '@/lib/utils/cn';
 import type { Profile, ProfileType } from '@/types/profile';
 
@@ -39,6 +40,7 @@ export default function ProfilesPage() {
   const [filterType, setFilterType] = useState<ProfileType | 'all'>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [qrModalProfile, setQrModalProfile] = useState<Profile | null>(null);
+  const [previewProfile, setPreviewProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     fetchProfiles();
@@ -269,14 +271,16 @@ export default function ProfilesPage() {
                             onClick={() => setOpenMenuId(null)}
                           />
                           <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]">
-                            <Link
-                              href={`/${profile.slug}`}
-                              target="_blank"
-                              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                            <button
+                              onClick={() => {
+                                setPreviewProfile(profile);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
                             >
-                              <ExternalLink className="w-4 h-4" />
-                              مشاهده
-                            </Link>
+                              <Eye className="w-4 h-4" />
+                              پیش‌نمایش
+                            </button>
                             <button
                               onClick={() => {
                                 setQrModalProfile(profile);
@@ -356,6 +360,13 @@ export default function ProfilesPage() {
         profileSlug={qrModalProfile?.slug || ''}
         profileTitle={qrModalProfile?.title || ''}
         themeColor={qrModalProfile?.theme_color || undefined}
+      />
+
+      {/* Profile Preview Modal */}
+      <ProfilePreviewModal
+        isOpen={!!previewProfile}
+        onClose={() => setPreviewProfile(null)}
+        profile={previewProfile}
       />
     </div>
   );
