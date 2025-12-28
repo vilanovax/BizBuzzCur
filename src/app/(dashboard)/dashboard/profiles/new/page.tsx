@@ -140,6 +140,7 @@ export default function NewProfilePage() {
           full_name: formValues.full_name as string || undefined,
           headline: formValues.headline as string || undefined,
           bio: formValues.bio as string || undefined,
+          photo_url: formValues.photo_url as string || undefined,
           email: formValues.email as string || undefined,
           phone: formValues.phone as string || undefined,
           website: formValues.website as string || undefined,

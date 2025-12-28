@@ -17,6 +17,8 @@ import {
   FileText,
   Users,
   Building2,
+  Power,
+  PowerOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -91,6 +93,26 @@ export default function ProfilesPage() {
       }
     } catch (err) {
       console.error('Delete error:', err);
+    }
+  };
+
+  const toggleProfileStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/profiles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: !currentStatus }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProfiles(profiles.map((p) =>
+          p.id === id ? { ...p, is_public: !currentStatus } : p
+        ));
+        setOpenMenuId(null);
+      }
+    } catch (err) {
+      console.error('Toggle status error:', err);
     }
   };
 
@@ -221,11 +243,18 @@ export default function ProfilesPage() {
             const TypeIcon = typeConfig.icon;
 
             return (
-              <Card key={profile.id} className="group relative overflow-hidden hover:shadow-md transition-shadow">
+              <Card
+                key={profile.id}
+                className={cn(
+                  "group relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer",
+                  !profile.is_public && "opacity-60 grayscale"
+                )}
+                onClick={() => setPreviewProfile(profile)}
+              >
                 {/* Color bar */}
                 <div
                   className="h-1 w-full"
-                  style={{ backgroundColor: profile.theme_color || typeConfig.color }}
+                  style={{ backgroundColor: profile.is_public ? (profile.theme_color || typeConfig.color) : '#9ca3af' }}
                 />
 
                 <CardContent className="p-5">
@@ -256,7 +285,7 @@ export default function ProfilesPage() {
                     </div>
 
                     {/* Menu */}
-                    <div className="relative">
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setOpenMenuId(openMenuId === profile.id ? null : profile.id)}
                         className="p-1.5 rounded hover:bg-muted transition-colors"
@@ -306,6 +335,27 @@ export default function ProfilesPage() {
                               کپی
                             </button>
                             <hr className="my-1" />
+                            <button
+                              onClick={() => toggleProfileStatus(profile.id, profile.is_public)}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-3 py-2 text-sm",
+                                profile.is_public
+                                  ? "text-orange-600 hover:bg-orange-50"
+                                  : "text-green-600 hover:bg-green-50"
+                              )}
+                            >
+                              {profile.is_public ? (
+                                <>
+                                  <PowerOff className="w-4 h-4" />
+                                  غیرفعال کردن
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="w-4 h-4" />
+                                  فعال کردن
+                                </>
+                              )}
+                            </button>
                             <button
                               onClick={() => deleteProfile(profile.id)}
                               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"

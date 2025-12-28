@@ -25,7 +25,7 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-// Fetch profile by slug
+// Fetch profile by slug (active and public)
 async function getProfile(slug: string): Promise<Profile | null> {
   try {
     const [profile] = await sql<Profile[]>`
@@ -39,6 +39,20 @@ async function getProfile(slug: string): Promise<Profile | null> {
   } catch (error) {
     console.error('Error fetching profile:', error);
     return null;
+  }
+}
+
+// Check if profile exists but is inactive
+async function checkProfileExists(slug: string): Promise<{ exists: boolean; isInactive: boolean }> {
+  try {
+    const [profile] = await sql<{ is_public: boolean; is_active: boolean }[]>`
+      SELECT is_public, is_active FROM profiles
+      WHERE slug = ${slug}
+    `;
+    if (!profile) return { exists: false, isInactive: false };
+    return { exists: true, isInactive: !profile.is_public || !profile.is_active };
+  } catch (error) {
+    return { exists: false, isInactive: false };
   }
 }
 
@@ -60,6 +74,43 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const profile = await getProfile(slug);
 
   if (!profile) {
+    // Check if profile exists but is inactive
+    const { exists, isInactive } = await checkProfileExists(slug);
+
+    if (exists && isInactive) {
+      // Show inactive profile message
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-card rounded-2xl shadow-xl border p-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
+              <User className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-3">
+              پروفایل غیرفعال است
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              این پروفایل در حال حاضر غیرفعال شده است و قابل مشاهده نیست.
+            </p>
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Globe className="w-5 h-5" />
+              بازگشت به صفحه اصلی
+            </a>
+            <div className="mt-8 pt-6 border-t">
+              <p className="text-xs text-muted-foreground">
+                ساخته شده با{' '}
+                <a href="/" className="text-primary hover:underline font-medium">
+                  بیزباز
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     notFound();
   }
 

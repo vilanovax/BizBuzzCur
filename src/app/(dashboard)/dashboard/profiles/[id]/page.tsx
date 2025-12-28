@@ -25,7 +25,6 @@ import { BlockBuilder } from '@/components/profile/BlockBuilder';
 import { ProfilePreview } from '@/components/profile/ProfilePreview';
 import { QRCodeWithLogo } from '@/components/profile/QRCodeWithLogo';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { ImageUpload } from '@/components/ui/ImageUpload';
 
 // Templates & Types
 import { resolveTemplate, type ResolvedTemplate } from '@/lib/profile/templates/index';
@@ -207,6 +206,8 @@ export default function EditProfilePage({ params }: EditProfilePageProps) {
       if (data.success) {
         setProfile(data.data);
         setHasChanges(false);
+        // Redirect to profiles page after successful save
+        router.push('/dashboard/profiles');
       } else {
         alert(data.error || 'خطا در ذخیره');
       }
@@ -367,12 +368,6 @@ export default function EditProfilePage({ params }: EditProfilePageProps) {
                     className="w-full px-4 py-2 border rounded-lg bg-background resize-none"
                   />
                 </div>
-                <ImageUpload
-                  value={formValues.photo_url as string}
-                  onChange={(url) => handleValueChange('photo_url', url)}
-                  labelFa="عکس پروفایل"
-                  type="profile_photo"
-                />
               </CardContent>
             </Card>
 

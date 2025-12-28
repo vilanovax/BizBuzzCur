@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
@@ -17,14 +18,19 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface SidebarInfo {
+  profileCount: number;
+  firstProfilePhoto: string | null;
+}
+
 const navigation = [
-  { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase },
-  { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User },
-  { name: 'رویدادها', href: '/dashboard/events', icon: Calendar },
-  { name: 'شبکه من', href: '/dashboard/contacts', icon: Users },
-  { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2 },
-  { name: 'اسکنر QR', href: '/dashboard/scan', icon: QrCode },
+  { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard, showCount: false },
+  { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase, showCount: false },
+  { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User, showCount: true },
+  { name: 'رویدادها', href: '/dashboard/events', icon: Calendar, showCount: false },
+  { name: 'شبکه من', href: '/dashboard/contacts', icon: Users, showCount: false },
+  { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2, showCount: false },
+  { name: 'اسکنر QR', href: '/dashboard/scan', icon: QrCode, showCount: false },
 ];
 
 const developerNav = [
@@ -38,6 +44,23 @@ const bottomNav = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [sidebarInfo, setSidebarInfo] = useState<SidebarInfo | null>(null);
+
+  useEffect(() => {
+    const fetchSidebarInfo = async () => {
+      try {
+        const res = await fetch('/api/user/sidebar-info');
+        const data = await res.json();
+        if (data.success) {
+          setSidebarInfo(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch sidebar info:', error);
+      }
+    };
+
+    fetchSidebarInfo();
+  }, []);
 
   return (
     <aside className="fixed inset-y-0 right-0 w-64 bg-card border-l border-border flex flex-col z-40">
@@ -70,7 +93,17 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-5 w-5" />
-              {item.name}
+              <span className="flex-1">{item.name}</span>
+              {item.showCount && sidebarInfo && sidebarInfo.profileCount > 0 && (
+                <span className={cn(
+                  'text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
+                  isActive
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                )}>
+                  {sidebarInfo.profileCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -122,11 +155,19 @@ export function Sidebar() {
       {/* User Section */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary font-medium">
-              {user?.first_name?.charAt(0) || 'U'}
-            </span>
-          </div>
+          {sidebarInfo?.firstProfilePhoto ? (
+            <img
+              src={sidebarInfo.firstProfilePhoto}
+              alt={user?.first_name || 'User'}
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-primary font-medium">
+                {user?.first_name?.charAt(0) || 'U'}
+              </span>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
               {user?.first_name} {user?.last_name}

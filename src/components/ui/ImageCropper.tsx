@@ -134,11 +134,22 @@ export function ImageCropper({
     setRotation((prev) => (prev + 90) % 360);
   }, []);
 
-  // Handle wheel zoom
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    handleZoom(delta);
+  // Handle wheel zoom with native event listener (to prevent page scroll)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      handleZoom(delta);
+    };
+
+    container.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheelEvent);
+    };
   }, [handleZoom]);
 
   // Crop image
@@ -242,7 +253,6 @@ export function ImageCropper({
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
           onTouchEnd={handleMouseUp}
-          onWheel={handleWheel}
         >
           {/* Image */}
           {imageSrc && imageLoaded && (

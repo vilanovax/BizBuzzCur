@@ -159,18 +159,20 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Link key={stat.title} href={stat.href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-h-[72px] flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">{stat.title}</p>
                     <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                    {stat.change && (
-                      <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                        <ArrowUpLeft className="h-3 w-3" />
-                        {stat.change}
-                      </p>
-                    )}
+                    <p className="text-xs text-green-600 flex items-center gap-1 mt-1 h-4">
+                      {stat.change && (
+                        <>
+                          <ArrowUpLeft className="h-3 w-3" />
+                          {stat.change}
+                        </>
+                      )}
+                    </p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <stat.icon className="h-6 w-6 text-primary" />
