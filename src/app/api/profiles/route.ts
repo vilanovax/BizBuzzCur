@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         WHERE user_id = ${user.id}
           AND profile_type = ${type}
           AND is_active = ${active === 'true'}
+          AND deleted_at IS NULL
         ORDER BY updated_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         SELECT * FROM profiles
         WHERE user_id = ${user.id}
           AND profile_type = ${type}
+          AND deleted_at IS NULL
         ORDER BY updated_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
@@ -55,6 +57,7 @@ export async function GET(request: NextRequest) {
         SELECT * FROM profiles
         WHERE user_id = ${user.id}
           AND is_active = ${active === 'true'}
+          AND deleted_at IS NULL
         ORDER BY updated_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
@@ -62,14 +65,15 @@ export async function GET(request: NextRequest) {
       profiles = await sql<Profile[]>`
         SELECT * FROM profiles
         WHERE user_id = ${user.id}
+          AND deleted_at IS NULL
         ORDER BY updated_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
     }
 
-    // Get total count
+    // Get total count (excluding deleted)
     const [{ count }] = await sql<[{ count: number }]>`
-      SELECT COUNT(*) as count FROM profiles WHERE user_id = ${user.id}
+      SELECT COUNT(*) as count FROM profiles WHERE user_id = ${user.id} AND deleted_at IS NULL
     `;
 
     return NextResponse.json({

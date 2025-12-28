@@ -15,6 +15,7 @@ import {
   Code,
   QrCode,
   Briefcase,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -38,6 +39,7 @@ const developerNav = [
 ];
 
 const bottomNav = [
+  { name: 'سطل آشغال', href: '/dashboard/trash', icon: Trash2 },
   { name: 'تنظیمات', href: '/dashboard/settings', icon: Settings },
 ];
 

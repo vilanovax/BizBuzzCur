@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const [profile] = await sql<Profile[]>`
       SELECT * FROM profiles
-      WHERE id = ${id} AND user_id = ${user.id}
+      WHERE id = ${id} AND user_id = ${user.id} AND deleted_at IS NULL
       LIMIT 1
     `;
 
@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/profiles/[id] - Delete profile
+// DELETE /api/profiles/[id] - Soft delete profile (move to trash)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
@@ -151,10 +151,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check ownership and delete
+    // Soft delete: set deleted_at timestamp
     const [deleted] = await sql<Profile[]>`
-      DELETE FROM profiles
-      WHERE id = ${id} AND user_id = ${user.id}
+      UPDATE profiles
+      SET deleted_at = NOW(), is_active = false, is_public = false
+      WHERE id = ${id} AND user_id = ${user.id} AND deleted_at IS NULL
       RETURNING id
     `;
 
@@ -167,7 +168,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({
       success: true,
-      message: 'Profile deleted successfully',
+      message: 'Profile moved to trash',
     });
   } catch (error) {
     console.error('Delete profile error:', error);

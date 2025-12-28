@@ -13,7 +13,7 @@ export async function GET() {
       );
     }
 
-    // Get first profile's photo and count of all profiles
+    // Get first profile's photo and count of all profiles (excluding deleted)
     const [stats] = await sql<[{
       profile_count: number;
       first_profile_photo: string | null;
@@ -21,14 +21,14 @@ export async function GET() {
       WITH first_profile AS (
         SELECT photo_url
         FROM profiles
-        WHERE user_id = ${user.id}
+        WHERE user_id = ${user.id} AND deleted_at IS NULL
         ORDER BY created_at ASC
         LIMIT 1
       ),
       profile_count AS (
         SELECT COUNT(*)::int as count
         FROM profiles
-        WHERE user_id = ${user.id}
+        WHERE user_id = ${user.id} AND deleted_at IS NULL
       )
       SELECT
         profile_count.count as profile_count,
