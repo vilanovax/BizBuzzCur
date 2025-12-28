@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { QRCodeModal } from '@/components/profile/QRCodeModal';
 import { cn } from '@/lib/utils/cn';
 import type { Profile, ProfileType } from '@/types/profile';
 
@@ -37,6 +38,7 @@ export default function ProfilesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ProfileType | 'all'>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [qrModalProfile, setQrModalProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     fetchProfiles();
@@ -266,7 +268,7 @@ export default function ProfilesPage() {
                             className="fixed inset-0 z-10"
                             onClick={() => setOpenMenuId(null)}
                           />
-                          <div className="absolute left-0 top-full mt-1 z-20 bg-card border rounded-lg shadow-lg py-1 min-w-[140px]">
+                          <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]">
                             <Link
                               href={`/${profile.slug}`}
                               target="_blank"
@@ -275,6 +277,16 @@ export default function ProfilesPage() {
                               <ExternalLink className="w-4 h-4" />
                               مشاهده
                             </Link>
+                            <button
+                              onClick={() => {
+                                setQrModalProfile(profile);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                            >
+                              <QrCode className="w-4 h-4" />
+                              نمایش QR
+                            </button>
                             <Link
                               href={`/dashboard/profiles/${profile.id}`}
                               className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
@@ -336,6 +348,15 @@ export default function ProfilesPage() {
           })}
         </div>
       )}
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={!!qrModalProfile}
+        onClose={() => setQrModalProfile(null)}
+        profileSlug={qrModalProfile?.slug || ''}
+        profileTitle={qrModalProfile?.title || ''}
+        themeColor={qrModalProfile?.theme_color || undefined}
+      />
     </div>
   );
 }

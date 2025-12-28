@@ -22,6 +22,19 @@ export interface SocialLinks {
   website?: string;
 }
 
+// Image sizes for optimized display
+export interface ImageSizes {
+  original: string;  // 1024px - storage only
+  large: string;     // 512px - profile page
+  medium: string;    // 256px - cards, lists
+  thumbnail: string; // 96px - avatars, chat
+}
+
+export interface ProfileImages {
+  photo?: ImageSizes;
+  cover?: string; // Cover doesn't need variants
+}
+
 // Theme color presets
 export const THEME_COLORS = [
   '#2563eb', // Blue (default)

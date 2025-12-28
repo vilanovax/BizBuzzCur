@@ -90,6 +90,16 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper to map field visibility to phone/email visibility
+// FieldVisibility uses 'public' but DB uses 'full'
+function mapToContactVisibility(visibility: string | undefined): PhoneVisibility {
+  if (visibility === 'public' || visibility === 'full') return 'full';
+  if (visibility === 'masked') return 'masked';
+  if (visibility === 'after_connect') return 'after_connect';
+  if (visibility === 'hidden') return 'hidden';
+  return 'full'; // default
+}
+
 // POST /api/profiles - Create new profile
 export async function POST(request: NextRequest) {
   try {
@@ -164,8 +174,8 @@ export async function POST(request: NextRequest) {
         ${body.theme_color || '#2563eb'},
         ${body.is_public !== false},
         ${(body.visibility as ProfileVisibility) || 'public'},
-        ${(body.phone_visibility as PhoneVisibility) || 'full'},
-        ${(body.email_visibility as EmailVisibility) || 'full'},
+        ${mapToContactVisibility(body.phone_visibility)},
+        ${mapToContactVisibility(body.email_visibility)},
         ${(body.cta_type as CTAType) || 'connect'},
         ${body.cta_url || null},
         ${body.internal_notes || null},

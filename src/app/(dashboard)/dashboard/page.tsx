@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/Button';
 import { ProfessionalIdentityCard } from '@/components/dashboard/ProfessionalIdentityCard';
 import Link from 'next/link';
+import sql from '@/lib/db';
 import {
   User,
   Calendar,
@@ -13,34 +14,102 @@ import {
   Plus,
 } from 'lucide-react';
 
+// Fetch dashboard stats from database
+async function getDashboardStats(userId: string) {
+  try {
+    // Get profile count and total views
+    const [profileStats] = await sql<[{ count: number; total_views: number }]>`
+      SELECT
+        COUNT(*)::int as count,
+        COALESCE(SUM(view_count), 0)::int as total_views
+      FROM profiles
+      WHERE user_id = ${userId}
+    `;
+
+    // Get active profiles count (for change indicator)
+    const [activeProfiles] = await sql<[{ count: number }]>`
+      SELECT COUNT(*)::int as count
+      FROM profiles
+      WHERE user_id = ${userId} AND is_active = true AND is_public = true
+    `;
+
+    // Events count (placeholder - will be implemented when events table is ready)
+    let eventsCount = 0;
+    try {
+      const [eventStats] = await sql<[{ count: number }]>`
+        SELECT COUNT(*)::int as count
+        FROM events
+        WHERE organizer_id = ${userId}
+      `;
+      eventsCount = eventStats?.count || 0;
+    } catch {
+      // Events table may not exist yet
+    }
+
+    // Connections count (placeholder)
+    let connectionsCount = 0;
+    try {
+      const [connectionStats] = await sql<[{ count: number }]>`
+        SELECT COUNT(*)::int as count
+        FROM connections
+        WHERE (user_a_id = ${userId} OR user_b_id = ${userId})
+          AND status = 'accepted'
+      `;
+      connectionsCount = connectionStats?.count || 0;
+    } catch {
+      // Connections table may not exist yet
+    }
+
+    return {
+      profileCount: profileStats?.count || 0,
+      activeProfileCount: activeProfiles?.count || 0,
+      totalViews: profileStats?.total_views || 0,
+      eventsCount,
+      connectionsCount,
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return {
+      profileCount: 0,
+      activeProfileCount: 0,
+      totalViews: 0,
+      eventsCount: 0,
+      connectionsCount: 0,
+    };
+  }
+}
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+
+  // Fetch real stats from database
+  const dashboardStats = user ? await getDashboardStats(user.id) : null;
 
   const stats = [
     {
       title: 'پروفایل‌ها',
-      value: '0',
-      change: '',
+      value: String(dashboardStats?.profileCount || 0),
+      change: dashboardStats?.activeProfileCount ? `${dashboardStats.activeProfileCount} فعال` : '',
       icon: User,
       href: '/dashboard/profiles',
     },
     {
       title: 'رویدادها',
-      value: '0',
+      value: String(dashboardStats?.eventsCount || 0),
       change: '',
       icon: Calendar,
       href: '/dashboard/events',
     },
     {
       title: 'شبکه',
-      value: '0',
+      value: String(dashboardStats?.connectionsCount || 0),
       change: '',
       icon: Users,
       href: '/dashboard/contacts',
     },
     {
       title: 'بازدید کل',
-      value: '0',
+      value: String(dashboardStats?.totalViews || 0),
       change: '',
       icon: Eye,
       href: '#',

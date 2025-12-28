@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { uploadFile, getPublicUrl } from '@/lib/storage/s3';
+import { uploadFile } from '@/lib/storage/s3';
 import { nanoid } from 'nanoid';
+import {
+  processProfileImage,
+  validateImage,
+  getMimeType,
+  IMAGE_VARIANTS,
+  type ImageVariant,
+} from '@/lib/image/processor';
 
 // Allowed file types
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
 // Max file sizes
@@ -17,13 +24,15 @@ interface UploadConfig {
   folder: string;
   allowedTypes: string[];
   maxSize: number;
+  processImage?: boolean;
 }
 
 const UPLOAD_CONFIGS: Record<UploadType, UploadConfig> = {
   profile_photo: {
-    folder: 'profiles/photos',
+    folder: 'users',
     allowedTypes: ALLOWED_IMAGE_TYPES,
     maxSize: MAX_IMAGE_SIZE,
+    processImage: true, // Enable image processing pipeline
   },
   cover_image: {
     folder: 'profiles/covers',
@@ -117,13 +126,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename
+    // Convert file to buffer
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Process profile photos with image pipeline
+    if (config.processImage && type === 'profile_photo') {
+      // Validate image
+      const validation = await validateImage(buffer);
+      if (!validation.valid) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'invalid_image',
+              message: validation.error || 'Invalid image',
+            },
+          },
+          { status: 400 }
+        );
+      }
+
+      // Get profile ID from form data (optional, for deterministic paths)
+      const profileId = (formData.get('profileId') as string) || nanoid(12);
+
+      // Process image and generate variants
+      const variants = await processProfileImage(buffer, { quality: 80 });
+
+      // Upload all variants in parallel
+      const uploadPromises = (Object.keys(variants) as ImageVariant[]).map(
+        async (variantName) => {
+          const variant = variants[variantName];
+          const size = IMAGE_VARIANTS[variantName];
+          const key = `users/${userId}/profiles/${profileId}/photo_${size.width}.webp`;
+
+          const result = await uploadFile(
+            key,
+            variant.buffer,
+            getMimeType(variant.format)
+          );
+
+          return { variant: variantName, ...result, size: variant.size };
+        }
+      );
+
+      const uploadResults = await Promise.all(uploadPromises);
+
+      // Create response with all variant URLs
+      const urls: Record<string, string> = {};
+      const keys: Record<string, string> = {};
+      let totalSize = 0;
+
+      uploadResults.forEach((result) => {
+        urls[result.variant] = result.url;
+        keys[result.variant] = result.key;
+        totalSize += result.size;
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          urls,
+          keys,
+          // Primary URL for backward compatibility (use medium for most UI)
+          url: urls.medium,
+          key: keys.medium,
+          // All sizes for different use cases
+          sizes: {
+            original: urls.original, // 1024px - storage only
+            large: urls.large,       // 512px - profile page
+            medium: urls.medium,     // 256px - cards, lists
+            thumbnail: urls.thumbnail, // 96px - avatars
+          },
+          filename: file.name,
+          originalSize: file.size,
+          processedSize: totalSize,
+          format: 'webp',
+        },
+      });
+    }
+
+    // Regular file upload (non-processed)
     const ext = file.name.split('.').pop() || getExtensionFromMime(file.type);
     const uniqueId = nanoid(12);
     const key = `${config.folder}/${userId}/${uniqueId}.${ext}`;
-
-    // Convert file to buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
 
     // Upload to S3
     const result = await uploadFile(key, buffer, file.type);

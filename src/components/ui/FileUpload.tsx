@@ -154,9 +154,9 @@ export function FileUpload({
           )}
         </div>
       ) : (
-        <div
+        <label
           className={cn(
-            'relative border-2 border-dashed rounded-lg p-6 transition-colors',
+            'relative block border-2 border-dashed rounded-lg p-6 transition-colors',
             dragActive ? 'border-primary bg-primary/5' : 'border-border',
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50',
           )}
@@ -170,10 +170,10 @@ export function FileUpload({
             accept={accept}
             onChange={handleChange}
             disabled={disabled || isUploading}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            className="sr-only"
           />
 
-          <div className="flex flex-col items-center justify-center text-center">
+          <div className="flex flex-col items-center justify-center text-center pointer-events-none">
             {isUploading ? (
               <>
                 <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
@@ -191,7 +191,7 @@ export function FileUpload({
               </>
             )}
           </div>
-        </div>
+        </label>
       )}
 
       {error && (
