@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface SidebarInfo {
   profileCount: number;
   firstProfilePhoto: string | null;
+  trashCount: number;
 }
 
 const navigation = [
@@ -135,6 +136,7 @@ export function Sidebar() {
         <div className="pt-4 mt-4 border-t border-border">
           {bottomNav.map((item) => {
             const isActive = pathname === item.href;
+            const isTrash = item.href === '/dashboard/trash';
             return (
               <Link
                 key={item.name}
@@ -147,7 +149,17 @@ export function Sidebar() {
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {isTrash && sidebarInfo && sidebarInfo.trashCount > 0 && (
+                  <span className={cn(
+                    'text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
+                    isActive
+                      ? 'bg-primary-foreground/20 text-primary-foreground'
+                      : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  )}>
+                    {sidebarInfo.trashCount}
+                  </span>
+                )}
               </Link>
             );
           })}

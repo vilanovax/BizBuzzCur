@@ -15,7 +15,6 @@ import { BlockBuilder } from '@/components/profile/BlockBuilder';
 import { ProfilePreview } from '@/components/profile/ProfilePreview';
 import { QRCodeWithLogo } from '@/components/profile/QRCodeWithLogo';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { ImageUpload } from '@/components/ui/ImageUpload';
 
 // Templates & Types
 import { TEMPLATES, resolveTemplate, type ResolvedTemplate } from '@/lib/profile/templates/index';
@@ -231,15 +230,6 @@ export default function NewProfilePage() {
                   className="w-full px-4 py-3 border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                 />
               </div>
-
-              {/* Profile photo */}
-              <ImageUpload
-                value={formValues.photo_url as string}
-                onChange={(url) => handleValueChange('photo_url', url)}
-                label="Profile Photo"
-                labelFa="عکس پروفایل"
-                type="profile_photo"
-              />
             </div>
           </div>
         );
