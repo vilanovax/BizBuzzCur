@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ProfessionalIdentityCard } from '@/components/dashboard/ProfessionalIdentityCard';
 import Link from 'next/link';
 import {
   User,
@@ -81,6 +82,9 @@ export default async function DashboardPage() {
           به داشبورد بیزباز خوش آمدید
         </p>
       </div>
+
+      {/* Professional Identity Card */}
+      <ProfessionalIdentityCard />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

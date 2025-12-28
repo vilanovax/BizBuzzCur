@@ -1,6 +1,25 @@
-import sql from './index';
+import postgres from 'postgres';
 import fs from 'fs';
 import path from 'path';
+import { config } from 'dotenv';
+
+// Load environment variables
+config({ path: '.env.local' });
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString || connectionString.includes('user:password@host')) {
+  console.error('ERROR: DATABASE_URL is not configured properly in .env.local');
+  process.exit(1);
+}
+
+console.log('Connecting to:', connectionString.replace(/:[^:@]+@/, ':***@'));
+
+const sql = postgres(connectionString, {
+  ssl: false,
+  max: 1,
+  connect_timeout: 30,
+});
 
 const SCHEMA_DIR = path.join(process.cwd(), 'src/lib/db/schema');
 

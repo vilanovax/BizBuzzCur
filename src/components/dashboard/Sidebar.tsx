@@ -13,11 +13,13 @@ import {
   LogOut,
   Code,
   QrCode,
+  Briefcase,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navigation = [
   { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase },
   { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User },
   { name: 'رویدادها', href: '/dashboard/events', icon: Calendar },
   { name: 'شبکه من', href: '/dashboard/contacts', icon: Users },
@@ -52,7 +54,10 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          // Special case for dashboard: only exact match
+          const isActive = item.href === '/dashboard'
+            ? pathname === '/dashboard'
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.name}

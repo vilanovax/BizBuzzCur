@@ -1,4 +1,17 @@
-export type ProfileType = 'business_card' | 'resume' | 'event';
+export type ProfileType = 'business_card' | 'resume' | 'event' | 'company';
+
+export type ProfileVisibility = 'public' | 'connections' | 'private' | 'event_only';
+export type PhoneVisibility = 'full' | 'masked' | 'after_connect' | 'hidden';
+export type EmailVisibility = 'full' | 'masked' | 'after_connect' | 'hidden';
+export type CTAType = 'connect' | 'message' | 'book_meeting' | 'download_cv' | 'visit_website' | 'none';
+
+export type TemplateId =
+  | 'business_card_work'
+  | 'resume_job'
+  | 'event_networking'
+  | 'company_intro'
+  | 'freelance_consulting'
+  | 'custom';
 
 export interface SocialLinks {
   linkedin?: string;
@@ -8,6 +21,20 @@ export interface SocialLinks {
   github?: string;
   website?: string;
 }
+
+// Theme color presets
+export const THEME_COLORS = [
+  '#2563eb', // Blue (default)
+  '#7c3aed', // Purple
+  '#059669', // Green
+  '#dc2626', // Red
+  '#ea580c', // Orange
+  '#0891b2', // Cyan
+  '#4f46e5', // Indigo
+  '#be185d', // Pink
+  '#1f2937', // Gray/Dark
+  '#000000', // Black
+] as const;
 
 export interface Profile {
   id: string;
@@ -46,10 +73,27 @@ export interface Profile {
   // QR Code
   qr_code_url: string | null;
 
+  // Template & Notes
+  template_id: TemplateId | null;
+  internal_notes: string | null;
+
   // Display Settings
   theme_color: string;
   is_public: boolean;
   is_active: boolean;
+
+  // Privacy & Visibility
+  visibility: ProfileVisibility;
+  expires_at: string | null;
+  phone_visibility: PhoneVisibility;
+  email_visibility: EmailVisibility;
+
+  // Call to Action
+  cta_type: CTAType;
+  cta_url: string | null;
+
+  // Files
+  resume_file_url: string | null;
 
   // Analytics
   view_count: number;
@@ -105,6 +149,7 @@ export interface ProfileSkill {
 export interface CreateProfileInput {
   title: string;
   profile_type: ProfileType;
+  template_id?: TemplateId;
   full_name?: string;
   headline?: string;
   bio?: string;
@@ -116,6 +161,13 @@ export interface CreateProfileInput {
   social_links?: SocialLinks;
   theme_color?: string;
   is_public?: boolean;
+  visibility?: ProfileVisibility;
+  phone_visibility?: PhoneVisibility;
+  email_visibility?: EmailVisibility;
+  cta_type?: CTAType;
+  cta_url?: string;
+  internal_notes?: string;
+  expires_at?: string;
 }
 
 export interface UpdateProfileInput extends Partial<CreateProfileInput> {
@@ -126,6 +178,7 @@ export interface UpdateProfileInput extends Partial<CreateProfileInput> {
   country?: string;
   industry?: string;
   custom_fields?: CustomField[];
+  resume_file_url?: string;
 }
 
 // API Response format for SDK consumers
