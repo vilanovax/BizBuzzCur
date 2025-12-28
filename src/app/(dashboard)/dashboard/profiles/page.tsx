@@ -34,15 +34,214 @@ const PROFILE_TYPE_CONFIG: Record<ProfileType, { icon: React.ElementType; label:
   company: { icon: Building2, label: 'شرکت', color: '#0891b2' },
 };
 
+// ProfileCard Component
+interface ProfileCardProps {
+  profile: Profile;
+  typeConfig: { icon: React.ElementType; label: string; color: string };
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
+  setPreviewProfile: (profile: Profile) => void;
+  setQrModalProfile: (profile: Profile) => void;
+  duplicateProfile: (id: string) => void;
+  toggleProfileStatus: (id: string, currentStatus: boolean) => void;
+  deleteProfile: (id: string) => void;
+}
+
+function ProfileCard({
+  profile,
+  typeConfig,
+  openMenuId,
+  setOpenMenuId,
+  setPreviewProfile,
+  setQrModalProfile,
+  duplicateProfile,
+  toggleProfileStatus,
+  deleteProfile,
+}: ProfileCardProps) {
+  const TypeIcon = typeConfig.icon;
+
+  return (
+    <Card
+      className={cn(
+        "group relative hover:shadow-md transition-shadow cursor-pointer",
+        !profile.is_public && "opacity-60 grayscale"
+      )}
+      onClick={() => setPreviewProfile(profile)}
+    >
+      {/* Color bar */}
+      <div
+        className="h-1 w-full"
+        style={{ backgroundColor: profile.is_public ? (profile.theme_color || typeConfig.color) : '#9ca3af' }}
+      />
+
+      <CardContent className="p-5">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            {profile.photo_url ? (
+              <img
+                src={profile.photo_url}
+                alt={profile.title}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                style={{ backgroundColor: profile.theme_color || typeConfig.color }}
+              >
+                {profile.title.charAt(0)}
+              </div>
+            )}
+            <div>
+              <h3 className="font-semibold line-clamp-1">{profile.title}</h3>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <TypeIcon className="w-3 h-3" />
+                {typeConfig.label}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu */}
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setOpenMenuId(openMenuId === profile.id ? null : profile.id)}
+              className="p-1.5 rounded hover:bg-muted transition-colors"
+            >
+              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            {openMenuId === profile.id && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setOpenMenuId(null)}
+                />
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]">
+                  <button
+                    onClick={() => {
+                      setPreviewProfile(profile);
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <Eye className="w-4 h-4" />
+                    پیش‌نمایش
+                  </button>
+                  <button
+                    onClick={() => {
+                      setQrModalProfile(profile);
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    نمایش QR
+                  </button>
+                  <Link
+                    href={`/dashboard/profiles/${profile.id}`}
+                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <Edit className="w-4 h-4" />
+                    ویرایش
+                  </Link>
+                  <button
+                    onClick={() => duplicateProfile(profile.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <Copy className="w-4 h-4" />
+                    کپی
+                  </button>
+                  <hr className="my-1" />
+                  <button
+                    onClick={() => toggleProfileStatus(profile.id, profile.is_public)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm",
+                      profile.is_public
+                        ? "text-orange-600 hover:bg-orange-50"
+                        : "text-green-600 hover:bg-green-50"
+                    )}
+                  >
+                    {profile.is_public ? (
+                      <>
+                        <PowerOff className="w-4 h-4" />
+                        غیرفعال کردن
+                      </>
+                    ) : (
+                      <>
+                        <Power className="w-4 h-4" />
+                        فعال کردن
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => deleteProfile(profile.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    حذف
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        {profile.headline && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+            {profile.headline}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Eye className="w-3 h-3" />
+            {profile.view_count || 0} بازدید
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span
+              className={cn(
+                'px-2 py-0.5 rounded text-xs',
+                profile.is_public
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-700'
+              )}
+            >
+              {profile.is_public ? 'فعال' : 'پیش‌نویس'}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ProfileType | 'all'>('all');
+  const [showInactive, setShowInactive] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [qrModalProfile, setQrModalProfile] = useState<Profile | null>(null);
   const [previewProfile, setPreviewProfile] = useState<Profile | null>(null);
+
+  // Load showInactive from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('bizbuzz_show_inactive_profiles');
+    if (saved !== null) {
+      setShowInactive(saved === 'true');
+    }
+  }, []);
+
+  // Save showInactive to localStorage when it changes
+  const handleShowInactiveChange = (checked: boolean) => {
+    setShowInactive(checked);
+    localStorage.setItem('bizbuzz_show_inactive_profiles', String(checked));
+  };
 
   useEffect(() => {
     fetchProfiles();
@@ -124,8 +323,21 @@ export default function ProfilesPage() {
 
     const matchesType = filterType === 'all' || profile.profile_type === filterType;
 
-    return matchesSearch && matchesType;
+    const matchesStatus = showInactive || profile.is_public;
+
+    return matchesSearch && matchesType && matchesStatus;
   });
+
+  // Group profiles by type (only when filterType is 'all')
+  const groupedProfiles = filterType === 'all'
+    ? Object.entries(PROFILE_TYPE_CONFIG).reduce((acc, [type]) => {
+        const profilesOfType = filteredProfiles.filter(p => p.profile_type === type);
+        if (profilesOfType.length > 0) {
+          acc[type as ProfileType] = profilesOfType;
+        }
+        return acc;
+      }, {} as Record<ProfileType, Profile[]>)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -146,47 +358,64 @@ export default function ProfilesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="جستجوی پروفایل..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pr-10 pl-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="جستجوی پروفایل..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pr-10 pl-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
 
-        {/* Type Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setFilterType('all')}
-            className={cn(
-              'px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors',
-              filterType === 'all'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80'
-            )}
-          >
-            همه
-          </button>
-          {Object.entries(PROFILE_TYPE_CONFIG).map(([type, config]) => (
+          {/* Type Filter */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
             <button
-              key={type}
-              onClick={() => setFilterType(type as ProfileType)}
+              onClick={() => setFilterType('all')}
               className={cn(
-                'px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors flex items-center gap-2',
-                filterType === type
+                'px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors',
+                filterType === 'all'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted hover:bg-muted/80'
               )}
             >
-              <config.icon className="w-3 h-3" />
-              {config.label}
+              همه
             </button>
-          ))}
+            {Object.entries(PROFILE_TYPE_CONFIG).map(([type, config]) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type as ProfileType)}
+                className={cn(
+                  'px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors flex items-center gap-2',
+                  filterType === type
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80'
+                )}
+              >
+                <config.icon className="w-3 h-3" />
+                {config.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Show Inactive Toggle */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => handleShowInactiveChange(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20"
+            />
+            <span className="text-sm text-muted-foreground">
+              نمایش پروفایل‌های غیرفعال
+            </span>
+          </label>
         </div>
       </div>
 
@@ -236,168 +465,69 @@ export default function ProfilesPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProfiles.map((profile) => {
-            const typeConfig = PROFILE_TYPE_CONFIG[profile.profile_type];
+      ) : groupedProfiles && filterType === 'all' ? (
+        // Grouped view when showing all types
+        <div className="space-y-8">
+          {Object.entries(groupedProfiles).map(([type, profilesOfType], index) => {
+            const typeConfig = PROFILE_TYPE_CONFIG[type as ProfileType];
             const TypeIcon = typeConfig.icon;
 
             return (
-              <Card
+              <div key={type}>
+                {/* Divider with section header */}
+                {index > 0 && <hr className="mb-8 border-border" />}
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
+                    style={{ backgroundColor: typeConfig.color }}
+                  >
+                    <TypeIcon className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-lg font-semibold">{typeConfig.label}</h2>
+                  <span className="text-sm text-muted-foreground">
+                    ({profilesOfType.length})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {profilesOfType.map((profile) => (
+                    <ProfileCard
+                      key={profile.id}
+                      profile={profile}
+                      typeConfig={typeConfig}
+                      openMenuId={openMenuId}
+                      setOpenMenuId={setOpenMenuId}
+                      setPreviewProfile={setPreviewProfile}
+                      setQrModalProfile={setQrModalProfile}
+                      duplicateProfile={duplicateProfile}
+                      toggleProfileStatus={toggleProfileStatus}
+                      deleteProfile={deleteProfile}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        // Flat view when filtering by type
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProfiles.map((profile) => {
+            const typeConfig = PROFILE_TYPE_CONFIG[profile.profile_type];
+            return (
+              <ProfileCard
                 key={profile.id}
-                className={cn(
-                  "group relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer",
-                  !profile.is_public && "opacity-60 grayscale"
-                )}
-                onClick={() => setPreviewProfile(profile)}
-              >
-                {/* Color bar */}
-                <div
-                  className="h-1 w-full"
-                  style={{ backgroundColor: profile.is_public ? (profile.theme_color || typeConfig.color) : '#9ca3af' }}
-                />
-
-                <CardContent className="p-5">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      {profile.photo_url ? (
-                        <img
-                          src={profile.photo_url}
-                          alt={profile.title}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: profile.theme_color || typeConfig.color }}
-                        >
-                          {profile.title.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <h3 className="font-semibold line-clamp-1">{profile.title}</h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <TypeIcon className="w-3 h-3" />
-                          {typeConfig.label}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu */}
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setOpenMenuId(openMenuId === profile.id ? null : profile.id)}
-                        className="p-1.5 rounded hover:bg-muted transition-colors"
-                      >
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </button>
-
-                      {openMenuId === profile.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setOpenMenuId(null)}
-                          />
-                          <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]">
-                            <button
-                              onClick={() => {
-                                setPreviewProfile(profile);
-                                setOpenMenuId(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-                            >
-                              <Eye className="w-4 h-4" />
-                              پیش‌نمایش
-                            </button>
-                            <button
-                              onClick={() => {
-                                setQrModalProfile(profile);
-                                setOpenMenuId(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-                            >
-                              <QrCode className="w-4 h-4" />
-                              نمایش QR
-                            </button>
-                            <Link
-                              href={`/dashboard/profiles/${profile.id}`}
-                              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-                            >
-                              <Edit className="w-4 h-4" />
-                              ویرایش
-                            </Link>
-                            <button
-                              onClick={() => duplicateProfile(profile.id)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-                            >
-                              <Copy className="w-4 h-4" />
-                              کپی
-                            </button>
-                            <hr className="my-1" />
-                            <button
-                              onClick={() => toggleProfileStatus(profile.id, profile.is_public)}
-                              className={cn(
-                                "w-full flex items-center gap-2 px-3 py-2 text-sm",
-                                profile.is_public
-                                  ? "text-orange-600 hover:bg-orange-50"
-                                  : "text-green-600 hover:bg-green-50"
-                              )}
-                            >
-                              {profile.is_public ? (
-                                <>
-                                  <PowerOff className="w-4 h-4" />
-                                  غیرفعال کردن
-                                </>
-                              ) : (
-                                <>
-                                  <Power className="w-4 h-4" />
-                                  فعال کردن
-                                </>
-                              )}
-                            </button>
-                            <button
-                              onClick={() => deleteProfile(profile.id)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              حذف
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  {profile.headline && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                      {profile.headline}
-                    </p>
-                  )}
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Eye className="w-3 h-3" />
-                      {profile.view_count || 0} بازدید
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <span
-                        className={cn(
-                          'px-2 py-0.5 rounded text-xs',
-                          profile.is_public
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
-                        )}
-                      >
-                        {profile.is_public ? 'فعال' : 'پیش‌نویس'}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                profile={profile}
+                typeConfig={typeConfig}
+                openMenuId={openMenuId}
+                setOpenMenuId={setOpenMenuId}
+                setPreviewProfile={setPreviewProfile}
+                setQrModalProfile={setQrModalProfile}
+                duplicateProfile={duplicateProfile}
+                toggleProfileStatus={toggleProfileStatus}
+                deleteProfile={deleteProfile}
+              />
             );
           })}
         </div>

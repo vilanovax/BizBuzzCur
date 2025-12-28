@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { X, Mail, Phone, Globe, MapPin, Briefcase, Linkedin, Twitter, Instagram, Github, Send, User } from 'lucide-react';
+import { X, Mail, Phone, Globe, MapPin, Briefcase, Linkedin, Twitter, Instagram, Github, Send, User, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils/cn';
 import type { Profile } from '@/types/profile';
 
 interface ProfilePreviewModalProps {
@@ -49,7 +50,18 @@ export function ProfilePreviewModal({ isOpen, onClose, profile }: ProfilePreview
       />
 
       {/* Modal */}
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className={cn(
+        "relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto",
+        !profile.is_public && "grayscale"
+      )}>
+        {/* Inactive Banner */}
+        {!profile.is_public && (
+          <div className="absolute top-12 left-0 right-0 z-20 bg-orange-500 text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-2">
+            <PowerOff className="w-4 h-4" />
+            پروفایل غیرفعال است
+          </div>
+        )}
+
         {/* Close button */}
         <button
           onClick={onClose}
@@ -61,7 +73,7 @@ export function ProfilePreviewModal({ isOpen, onClose, profile }: ProfilePreview
         {/* Header/Cover */}
         <div
           className="h-24 rounded-t-2xl"
-          style={{ backgroundColor: profile.theme_color || '#2563eb' }}
+          style={{ backgroundColor: profile.is_public ? (profile.theme_color || '#2563eb') : '#9ca3af' }}
         >
           {profile.cover_url && (
             <img

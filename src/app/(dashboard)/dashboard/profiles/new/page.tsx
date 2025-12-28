@@ -377,7 +377,11 @@ export default function NewProfilePage() {
                   phone: formValues.phone as string,
                   website: formValues.website as string,
                   profilePhoto: formValues.photo_url as string,
-                  skills: formValues.skills as string[],
+                  skills: Array.isArray(formValues.skills)
+                    ? formValues.skills.map((s: { name: string; level?: string } | string) =>
+                        typeof s === 'string' ? s : s.name
+                      )
+                    : [],
                   socialLinks: formValues.social_links as Record<string, string>,
                 }}
                 visibilityMap={visibilityMap}
