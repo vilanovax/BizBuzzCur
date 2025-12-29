@@ -178,70 +178,56 @@ export default async function PublicEventPage({ params }: PageProps) {
         </button>
       </div>
 
+      {/* Event Info Header - Below Banner */}
+      <div className="max-w-4xl mx-auto px-4 py-6 border-b bg-card/50 backdrop-blur-sm">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+          {event.title}
+        </h1>
+        <div className="flex flex-wrap gap-4 text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            <span>{formatDate(event.start_date)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
+            <span>{formatTime(event.start_date)}</span>
+            {event.end_date && (
+              <>
+                <span>-</span>
+                <span>{formatTime(event.end_date)}</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {event.location_type === 'online' ? (
+              <>
+                <Video className="w-5 h-5 text-primary" />
+                <span>آنلاین</span>
+              </>
+            ) : (
+              <>
+                <MapPin className="w-5 h-5 text-primary" />
+                <span>
+                  {event.venue_name}
+                  {event.venue_name && event.city && ' - '}
+                  {event.city}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 -mt-12 pb-12">
+      <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="grid md:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Event Card */}
             <div className="bg-card rounded-2xl shadow-xl border overflow-hidden">
-              {/* Event Header */}
-              <div className="p-6">
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
-                  {event.title}
-                </h1>
-
-                {/* Date & Time */}
-                <div className="flex flex-wrap gap-4 text-muted-foreground mb-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-primary" />
-                    <span>{formatDate(event.start_date)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <span>{formatTime(event.start_date)}</span>
-                    {event.end_date && (
-                      <>
-                        <span>-</span>
-                        <span>{formatTime(event.end_date)}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  {event.location_type === 'online' ? (
-                    <>
-                      <Video className="w-5 h-5 text-primary" />
-                      <span>آنلاین</span>
-                      {event.online_platform && (
-                        <span className="text-sm bg-muted px-2 py-0.5 rounded">
-                          {event.online_platform}
-                        </span>
-                      )}
-                    </>
-                  ) : event.location_type === 'hybrid' ? (
-                    <>
-                      <Globe className="w-5 h-5 text-primary" />
-                      <span>ترکیبی (حضوری + آنلاین)</span>
-                    </>
-                  ) : (
-                    <>
-                      <MapPin className="w-5 h-5 text-primary" />
-                      <span>
-                        {event.venue_name}
-                        {event.venue_name && event.city && ' - '}
-                        {event.city}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-
               {/* Organizer */}
               {event.organizer && (
-                <div className="px-6 py-4 border-t flex items-center gap-3">
+                <div className="px-6 py-4 flex items-center gap-3">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
                     style={{ backgroundColor: event.theme_color || '#2563eb' }}
@@ -341,9 +327,9 @@ export default async function PublicEventPage({ params }: PageProps) {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 order-first md:order-last">
             {/* Registration Card */}
-            <div className="bg-card rounded-xl border shadow-lg sticky top-4">
+            <div className="bg-card rounded-xl border shadow-lg md:sticky md:top-4">
               <div className="p-6">
                 {/* Price */}
                 <div className="text-center mb-4">
