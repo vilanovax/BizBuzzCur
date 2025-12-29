@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { EventQRCodeModal } from '@/components/events/EventQRCodeModal';
 import { cn } from '@/lib/utils/cn';
 import type { Event, EventStatus } from '@/types/event';
 import { EVENT_TYPE_CONFIG } from '@/types/event';
@@ -53,6 +54,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     fetchEvent();
@@ -160,33 +162,59 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const typeConfig = EVENT_TYPE_CONFIG[event.event_type as keyof typeof EVENT_TYPE_CONFIG];
   const statusConfig = STATUS_CONFIG[event.status];
+  const themeColor = event.theme_color || typeConfig?.color || '#2563eb';
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-4">
+      {/* Banner/Header with Theme Color */}
+      <div
+        className="relative rounded-xl overflow-hidden"
+        style={{ backgroundColor: themeColor }}
+      >
+        {event.banner_url ? (
+          <img
+            src={event.banner_url}
+            alt={event.title}
+            className="w-full h-48 object-cover"
+          />
+        ) : (
+          <div className="h-32" />
+        )}
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"
+        />
+        <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+          <div className="flex items-center gap-3 mb-1">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+            >
+              {event.event_type === 'focused_event' ? (
+                <Target className="w-5 h-5" />
+              ) : (
+                <Globe className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">{event.title}</h1>
+              <p className="text-sm text-white/80">{typeConfig?.label}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions Bar */}
+      <div className="flex items-center gap-4">
         <Link
           href="/dashboard/events"
-          className="p-2 rounded-lg hover:bg-muted transition-colors mt-1"
+          className="p-2 rounded-lg hover:bg-muted transition-colors"
         >
           <ArrowRight className="w-5 h-5" />
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-xl font-bold">{event.title}</h1>
-            <span className={cn('px-2 py-0.5 rounded text-xs', statusConfig.bgColor, statusConfig.color)}>
-              {statusConfig.label}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {event.event_type === 'focused_event' ? (
-              <Target className="w-4 h-4" />
-            ) : (
-              <Globe className="w-4 h-4" />
-            )}
-            <span>{typeConfig?.label}</span>
-          </div>
-        </div>
+        <span className={cn('px-3 py-1 rounded-full text-xs font-medium', statusConfig.bgColor, statusConfig.color)}>
+          {statusConfig.label}
+        </span>
+        <div className="flex-1" />
 
         {/* Actions */}
         <div className="flex items-center gap-2">
@@ -223,6 +251,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   onClick={() => setMenuOpen(false)}
                 />
                 <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[160px]">
+                  <Link
+                    href={`/e/${event.slug}`}
+                    target="_blank"
+                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    پیش‌نمایش
+                  </Link>
+                  <hr className="my-1" />
                   {event.status === 'draft' && (
                     <button
                       onClick={() => {
@@ -378,11 +416,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </CardContent>
           </Card>
         </Link>
-        <button onClick={copyLink}>
+        <button onClick={() => setShowQRModal(true)}>
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <Share2 className="w-5 h-5 text-primary" />
-              <span className="font-medium">اشتراک‌گذاری</span>
+              <span className="font-medium">اشتراک‌گذاری و QR</span>
               <ArrowRight className="w-4 h-4 mr-auto rotate-180" />
             </CardContent>
           </Card>
@@ -491,6 +529,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Code Modal */}
+      <EventQRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        eventSlug={event.slug}
+        eventTitle={event.title}
+        themeColor={event.theme_color}
+      />
     </div>
   );
 }

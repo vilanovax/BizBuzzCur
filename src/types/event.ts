@@ -350,12 +350,15 @@ export interface CreateEventInput {
   theme_color?: string;
   welcome_message?: string;
   custom_fields?: EventCustomField[];
+  banner_url?: string;
+  welcome_attachments?: EventAttachment[];
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {
   status?: EventStatus;
   banner_url?: string;
   logo_url?: string;
+  welcome_attachments?: EventAttachment[];
 }
 
 export interface RegisterAttendeeInput {

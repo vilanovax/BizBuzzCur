@@ -164,6 +164,7 @@ export async function PUT(
       status,
       banner_url,
       logo_url,
+      welcome_attachments,
     } = body;
 
     // Build update object
@@ -195,6 +196,7 @@ export async function PUT(
         status = COALESCE(${status ?? null}, status),
         banner_url = COALESCE(${banner_url ?? null}, banner_url),
         logo_url = COALESCE(${logo_url ?? null}, logo_url),
+        welcome_attachments = COALESCE(${welcome_attachments ? JSON.stringify(welcome_attachments) : null}, welcome_attachments),
         published_at = CASE
           WHEN ${status ?? null} = 'published' AND published_at IS NULL THEN NOW()
           ELSE published_at

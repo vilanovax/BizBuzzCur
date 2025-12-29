@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import PersianCalendar from '@/components/ui/PersianCalendar';
+import { ImageUpload, MultiFileUpload } from '@/components/ui/FileUpload';
 import { cn } from '@/lib/utils/cn';
-import type { EventType, LocationType, EventFeatures, CreateEventInput } from '@/types/event';
+import type { EventType, LocationType, EventFeatures, CreateEventInput, EventAttachment } from '@/types/event';
 import { EVENT_TYPE_CONFIG, FOCUSED_EVENT_FEATURES, NETWORKING_EVENT_FEATURES } from '@/types/event';
 
 type Step = 'type' | 'basic' | 'location' | 'settings' | 'review';
@@ -84,6 +86,8 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
     features: initialData?.features || {},
     theme_color: initialData?.theme_color || '#2563eb',
     welcome_message: initialData?.welcome_message || '',
+    banner_url: initialData?.banner_url || '',
+    welcome_attachments: initialData?.welcome_attachments || [],
   });
 
   const [features, setFeatures] = useState<EventFeatures>(
@@ -348,6 +352,20 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
               </div>
             </div>
 
+            {/* Banner Image */}
+            <div className="space-y-2">
+              <ImageUpload
+                value={formData.banner_url}
+                onChange={(url) => updateFormData({ banner_url: url || '' })}
+                label="تصویر بنر ایونت"
+                aspectRatio="banner"
+                maxSize={5}
+              />
+              <p className="text-xs text-muted-foreground">
+                این تصویر در صفحه ایونت و لینک اشتراک‌گذاری نمایش داده می‌شود
+              </p>
+            </div>
+
             {/* Navigation */}
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={prevStep}>
@@ -473,22 +491,21 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm text-muted-foreground">تاریخ و ساعت شروع *</label>
-                  <input
-                    type="datetime-local"
+                  <PersianCalendar
                     value={formData.start_date}
-                    onChange={(e) => updateFormData({ start_date: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    dir="ltr"
+                    onChange={(date) => updateFormData({ start_date: date })}
+                    placeholder="انتخاب تاریخ و ساعت شروع"
+                    showTime={true}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-muted-foreground">تاریخ و ساعت پایان</label>
-                  <input
-                    type="datetime-local"
+                  <PersianCalendar
                     value={formData.end_date}
-                    onChange={(e) => updateFormData({ end_date: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    dir="ltr"
+                    onChange={(date) => updateFormData({ end_date: date })}
+                    placeholder="انتخاب تاریخ و ساعت پایان"
+                    showTime={true}
+                    minDate={formData.start_date}
                   />
                 </div>
               </div>
@@ -643,6 +660,33 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
+            </div>
+
+            {/* Welcome Attachments */}
+            <div className="space-y-2">
+              <MultiFileUpload
+                values={(formData.welcome_attachments || []).map(att => ({
+                  url: att.url,
+                  name: att.name,
+                  type: att.type === 'file' ? 'application/octet-stream' : 'link',
+                  size: att.size,
+                }))}
+                onChange={(files) => updateFormData({
+                  welcome_attachments: files.map(f => ({
+                    type: 'file' as const,
+                    url: f.url,
+                    name: f.name,
+                    size: f.size,
+                  }))
+                })}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar"
+                maxSize={10}
+                maxFiles={5}
+                label="فایل‌های ضمیمه (اختیاری)"
+              />
+              <p className="text-xs text-muted-foreground">
+                فایل‌هایی که همراه پیام خوش‌آمدگویی برای شرکت‌کنندگان ارسال می‌شود
+              </p>
             </div>
 
             {/* Navigation */}

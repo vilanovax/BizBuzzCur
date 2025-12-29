@@ -167,7 +167,7 @@ export async function GET(
 
     // Get recent check-ins
     const recentCheckins = await sql`
-      SELECT ea.id, ea.full_name, ea.photo_url, ea.checked_in_at,
+      SELECT ea.id, ea.full_name, ea.checked_in_at,
         u.avatar_url
       FROM event_attendees ea
       LEFT JOIN users u ON u.id = ea.user_id

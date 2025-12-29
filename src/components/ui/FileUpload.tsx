@@ -200,3 +200,324 @@ export function FileUpload({
     </div>
   );
 }
+
+// Image Upload Component
+interface ImageUploadProps {
+  value?: string;
+  onChange: (url: string | null) => void;
+  label?: string;
+  className?: string;
+  maxSize?: number;
+  aspectRatio?: 'square' | 'banner' | 'auto';
+  disabled?: boolean;
+}
+
+export function ImageUpload({
+  value,
+  onChange,
+  label,
+  className,
+  maxSize = 5,
+  aspectRatio = 'auto',
+  disabled = false,
+}: ImageUploadProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+
+    if (!file.type.startsWith('image/')) {
+      setError('فقط فایل تصویری مجاز است');
+      return;
+    }
+
+    if (file.size > maxSize * 1024 * 1024) {
+      setError(`حداکثر حجم تصویر ${maxSize} مگابایت است`);
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'image');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message || 'Upload failed');
+      }
+
+      onChange(result.data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'خطا در آپلود');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  const heightClass = aspectRatio === 'banner' ? 'h-48' : aspectRatio === 'square' ? 'h-40' : 'h-32';
+
+  return (
+    <div className={className}>
+      {label && (
+        <label className="block text-sm font-medium text-foreground mb-2">
+          {label}
+        </label>
+      )}
+
+      {value ? (
+        <div className={cn('relative rounded-xl overflow-hidden', heightClass)}>
+          <img src={value} alt="Uploaded" className="w-full h-full object-cover" />
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="absolute top-2 left-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ) : (
+        <label
+          className={cn(
+            'relative block border-2 border-dashed rounded-xl transition-colors',
+            heightClass,
+            dragActive ? 'border-primary bg-primary/5' : 'border-border',
+            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50',
+          )}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleChange}
+            disabled={disabled || isUploading}
+            className="sr-only"
+          />
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+            {isUploading ? (
+              <>
+                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                <span className="text-sm text-muted-foreground">در حال آپلود...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                <span className="text-sm text-muted-foreground">
+                  تصویر را بکشید یا کلیک کنید
+                </span>
+                <span className="text-xs text-muted-foreground mt-1">
+                  حداکثر {maxSize} مگابایت
+                </span>
+              </>
+            )}
+          </div>
+        </label>
+      )}
+
+      {error && (
+        <p className="mt-2 text-sm text-destructive">{error}</p>
+      )}
+    </div>
+  );
+}
+
+// Multi File Upload Component
+interface MultiFileUploadProps {
+  values: { url: string; name: string; type?: string; size?: number }[];
+  onChange: (files: { url: string; name: string; type?: string; size?: number }[]) => void;
+  accept?: string;
+  maxSize?: number;
+  maxFiles?: number;
+  label?: string;
+  className?: string;
+  disabled?: boolean;
+}
+
+export function MultiFileUpload({
+  values = [],
+  onChange,
+  accept = '*/*',
+  maxSize = 10,
+  maxFiles = 5,
+  label,
+  className,
+  disabled = false,
+}: MultiFileUploadProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFiles = async (files: FileList) => {
+    if (values.length + files.length > maxFiles) {
+      setError(`حداکثر ${maxFiles} فایل می‌توانید آپلود کنید`);
+      return;
+    }
+
+    setError(null);
+    setIsUploading(true);
+
+    const newFiles: { url: string; name: string; type?: string; size?: number }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (file.size > maxSize * 1024 * 1024) {
+        setError(`حجم فایل ${file.name} بیشتر از ${maxSize} مگابایت است`);
+        continue;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'attachment');
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          newFiles.push({
+            url: data.data.url,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          });
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+      }
+    }
+
+    if (newFiles.length > 0) {
+      onChange([...values, ...newFiles]);
+    }
+
+    setIsUploading(false);
+  };
+
+  const removeFile = (index: number) => {
+    const newValues = values.filter((_, i) => i !== index);
+    onChange(newValues);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  return (
+    <div className={className}>
+      {label && (
+        <label className="block text-sm font-medium text-foreground mb-2">
+          {label}
+        </label>
+      )}
+
+      {values.length < maxFiles && !disabled && (
+        <label
+          className={cn(
+            'block border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors',
+            'border-muted hover:border-primary/50',
+            isUploading && 'pointer-events-none opacity-50'
+          )}
+        >
+          <input
+            type="file"
+            accept={accept}
+            multiple
+            onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            className="sr-only"
+            disabled={disabled || isUploading}
+          />
+
+          {isUploading ? (
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">در حال آپلود...</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <Upload className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                افزودن فایل (حداکثر {maxSize}MB)
+              </span>
+            </div>
+          )}
+        </label>
+      )}
+
+      {error && (
+        <p className="text-sm text-destructive mt-2">{error}</p>
+      )}
+
+      {values.length > 0 && (
+        <div className="space-y-2 mt-3">
+          {values.map((file, index) => (
+            <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+              <File className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{file.name}</p>
+                {file.size && (
+                  <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                )}
+              </div>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="p-1 hover:bg-background rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

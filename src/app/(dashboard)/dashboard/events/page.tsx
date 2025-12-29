@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Plus,
   Search,
@@ -19,9 +20,11 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { EventQRCodeModal } from '@/components/events/EventQRCodeModal';
 import { cn } from '@/lib/utils/cn';
 import type { Event, EventType, EventStatus } from '@/types/event';
 import { EVENT_TYPE_CONFIG } from '@/types/event';
@@ -39,8 +42,15 @@ interface EventWithCount extends Event {
   attendee_count: number;
 }
 
-function EventCard({ event, onDelete }: { event: EventWithCount; onDelete: (id: string) => void }) {
+interface EventCardProps {
+  event: EventWithCount;
+  onDelete: (id: string) => void;
+  onShowQR: (event: EventWithCount) => void;
+}
+
+function EventCard({ event, onDelete, onShowQR }: EventCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
   const typeConfig = EVENT_TYPE_CONFIG[event.event_type as keyof typeof EVENT_TYPE_CONFIG];
   const statusConfig = STATUS_CONFIG[event.status];
 
@@ -61,8 +71,17 @@ function EventCard({ event, onDelete }: { event: EventWithCount; onDelete: (id: 
     });
   };
 
+  const handleCardClick = () => {
+    if (!menuOpen) {
+      router.push(`/dashboard/events/${event.id}`);
+    }
+  };
+
   return (
-    <Card className="group hover:shadow-md transition-shadow">
+    <Card
+      className="group hover:shadow-md transition-shadow cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* Color bar */}
       <div
         className="h-1.5 w-full"
@@ -100,9 +119,13 @@ function EventCard({ event, onDelete }: { event: EventWithCount; onDelete: (id: 
           </div>
 
           {/* Menu */}
-          <div className="relative">
+          <div className="relative" onClick={(e) => e.preventDefault()}>
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
               className="p-1.5 rounded hover:bg-muted transition-colors"
             >
               <MoreVertical className="w-4 h-4 text-muted-foreground" />
@@ -112,34 +135,70 @@ function EventCard({ event, onDelete }: { event: EventWithCount; onDelete: (id: 
               <>
                 <div
                   className="fixed inset-0 z-10"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                  }}
                 />
-                <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]">
-                  <Link
-                    href={`/dashboard/events/${event.id}`}
-                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                <div
+                  className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-lg py-1 min-w-[140px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => {
+                      router.push(`/dashboard/events/${event.id}`);
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
                   >
                     <Eye className="w-4 h-4" />
                     مشاهده
-                  </Link>
-                  <Link
-                    href={`/dashboard/events/${event.id}/edit`}
-                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push(`/dashboard/events/${event.id}/edit`);
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
                   >
                     <Edit className="w-4 h-4" />
                     ویرایش
-                  </Link>
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted">
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.open(`/e/${event.slug}`, '_blank');
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    پیش‌نمایش
+                  </button>
+                  <button
+                    onClick={() => {
+                      onShowQR(event);
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
                     <QrCode className="w-4 h-4" />
                     QR Code
                   </button>
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted">
+                  <button
+                    onClick={() => {
+                      onShowQR(event);
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
                     <Share2 className="w-4 h-4" />
                     اشتراک‌گذاری
                   </button>
                   <hr className="my-1" />
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (confirm('آیا از حذف این ایونت مطمئن هستید؟')) {
                         onDelete(event.id);
                       }
@@ -202,6 +261,7 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<EventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all');
+  const [qrModalEvent, setQrModalEvent] = useState<EventWithCount | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -395,9 +455,21 @@ export default function EventsPage() {
               key={event.id}
               event={event}
               onDelete={deleteEvent}
+              onShowQR={setQrModalEvent}
             />
           ))}
         </div>
+      )}
+
+      {/* QR Code Modal */}
+      {qrModalEvent && (
+        <EventQRCodeModal
+          isOpen={!!qrModalEvent}
+          onClose={() => setQrModalEvent(null)}
+          eventSlug={qrModalEvent.slug}
+          eventTitle={qrModalEvent.title}
+          themeColor={qrModalEvent.theme_color}
+        />
       )}
     </div>
   );

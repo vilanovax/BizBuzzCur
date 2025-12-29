@@ -130,6 +130,15 @@ function ProfileCard({
                     <Eye className="w-4 h-4" />
                     پیش‌نمایش
                   </button>
+                  <Link
+                    href={`/${profile.slug}`}
+                    target="_blank"
+                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                    onClick={() => setOpenMenuId(null)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    مشاهده زنده
+                  </Link>
                   <button
                     onClick={() => {
                       setQrModalProfile(profile);

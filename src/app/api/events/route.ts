@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
       theme_color,
       welcome_message,
       custom_fields = [],
+      banner_url,
+      welcome_attachments = [],
     } = body;
 
     // Validate required fields
@@ -162,6 +164,8 @@ export async function POST(request: NextRequest) {
         theme_color,
         welcome_message,
         custom_fields,
+        banner_url,
+        welcome_attachments,
         status,
         auto_approve,
         requires_approval
@@ -192,6 +196,8 @@ export async function POST(request: NextRequest) {
         ${finalThemeColor},
         ${welcome_message || null},
         ${JSON.stringify(custom_fields)},
+        ${banner_url || null},
+        ${JSON.stringify(welcome_attachments)},
         'draft',
         ${event_type === 'focused_event'},
         ${event_type === 'networking_event'}
