@@ -18,7 +18,21 @@ const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'application/msword', 'applic
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 
-type UploadType = 'profile_photo' | 'cover_image' | 'resume' | 'document' | 'qr_code';
+// Additional allowed file types for attachments
+const ALLOWED_ATTACHMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/zip',
+  'application/x-rar-compressed',
+  'application/x-zip-compressed',
+];
+
+type UploadType = 'profile_photo' | 'cover_image' | 'resume' | 'document' | 'qr_code' | 'image' | 'attachment';
 
 interface UploadConfig {
   folder: string;
@@ -53,6 +67,18 @@ const UPLOAD_CONFIGS: Record<UploadType, UploadConfig> = {
     folder: 'qr-codes',
     allowedTypes: ['image/png'],
     maxSize: MAX_IMAGE_SIZE,
+  },
+  // Generic image upload (for banners, event images, etc.)
+  image: {
+    folder: 'images',
+    allowedTypes: ALLOWED_IMAGE_TYPES,
+    maxSize: MAX_IMAGE_SIZE,
+  },
+  // Generic attachment upload (for event attachments, etc.)
+  attachment: {
+    folder: 'attachments',
+    allowedTypes: [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_ATTACHMENT_TYPES],
+    maxSize: MAX_DOCUMENT_SIZE,
   },
 };
 
@@ -238,9 +264,18 @@ function getExtensionFromMime(mimeType: string): string {
     'image/png': 'png',
     'image/webp': 'webp',
     'image/gif': 'gif',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
     'application/pdf': 'pdf',
     'application/msword': 'doc',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/zip': 'zip',
+    'application/x-rar-compressed': 'rar',
+    'application/x-zip-compressed': 'zip',
   };
   return extensions[mimeType] || 'bin';
 }
