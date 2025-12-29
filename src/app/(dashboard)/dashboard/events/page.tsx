@@ -21,6 +21,9 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -254,6 +257,15 @@ function EventCard({ event, onDelete, onShowQR }: EventCardProps) {
   );
 }
 
+type SortOption = 'date_asc' | 'date_desc' | 'created_desc' | 'title_asc';
+
+const SORT_OPTIONS: { value: SortOption; label: string; icon: typeof ArrowUp }[] = [
+  { value: 'date_desc', label: 'نزدیک‌ترین تاریخ', icon: ArrowDown },
+  { value: 'date_asc', label: 'دورترین تاریخ', icon: ArrowUp },
+  { value: 'created_desc', label: 'جدیدترین', icon: ArrowDown },
+  { value: 'title_asc', label: 'الفبایی', icon: ArrowUpDown },
+];
+
 export default function EventsPage() {
   const [events, setEvents] = useState<EventWithCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,6 +273,7 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<EventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('date_desc');
   const [qrModalEvent, setQrModalEvent] = useState<EventWithCount | null>(null);
 
   useEffect(() => {
@@ -298,16 +311,31 @@ export default function EventsPage() {
     }
   };
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch =
-      !searchQuery ||
-      event.title.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredEvents = events
+    .filter(event => {
+      const matchesSearch =
+        !searchQuery ||
+        event.title.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesType = filterType === 'all' || event.event_type === filterType;
-    const matchesStatus = filterStatus === 'all' || event.status === filterStatus;
+      const matchesType = filterType === 'all' || event.event_type === filterType;
+      const matchesStatus = filterStatus === 'all' || event.status === filterStatus;
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
+      return matchesSearch && matchesType && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'date_asc':
+          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+        case 'date_desc':
+          return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+        case 'created_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'title_asc':
+          return a.title.localeCompare(b.title, 'fa');
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="space-y-6">
@@ -382,22 +410,40 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Status Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {(['all', 'draft', 'published', 'ongoing', 'completed'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={cn(
-                'px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors',
-                filterStatus === status
-                  ? 'bg-foreground text-background'
-                  : 'bg-muted hover:bg-muted/80'
-              )}
+        {/* Status Filter & Sort */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+            {(['all', 'draft', 'published', 'ongoing', 'completed'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors',
+                  filterStatus === status
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted hover:bg-muted/80'
+                )}
+              >
+                {status === 'all' ? 'همه وضعیت‌ها' : STATUS_CONFIG[status].label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="px-3 py-1.5 rounded-lg text-sm bg-muted border-0 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
             >
-              {status === 'all' ? 'همه وضعیت‌ها' : STATUS_CONFIG[status].label}
-            </button>
-          ))}
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
