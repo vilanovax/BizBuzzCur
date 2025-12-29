@@ -96,7 +96,7 @@ export function ChatModal({ isOpen, onClose, profile, ownerId, isGuest }: ChatMo
     if (isGuest) {
       // For guests, redirect to signup with message context
       const message = encodeURIComponent(newMessage);
-      window.location.href = `/auth/signup?redirect=/p/${profile.slug}&message=${message}`;
+      window.location.href = `/signup?redirect=/${profile.slug}&message=${message}`;
       return;
     }
 
@@ -209,7 +209,7 @@ export function ChatModal({ isOpen, onClose, profile, ownerId, isGuest }: ChatMo
             </div>
             <div className="mt-3 pt-3 border-t text-center">
               <a
-                href={`/auth/signup?redirect=/p/${profile.slug}`}
+                href={`/signup?redirect=/${profile.slug}`}
                 className="text-sm text-primary hover:underline inline-flex items-center gap-1"
               >
                 <UserPlus className="w-4 h-4" />
@@ -286,7 +286,7 @@ export function ChatModal({ isOpen, onClose, profile, ownerId, isGuest }: ChatMo
           {isGuest && !showGuestForm && (
             <p className="text-xs text-center text-muted-foreground mt-2">
               برای ذخیره گفتگو،{' '}
-              <a href={`/auth/signup?redirect=/p/${profile.slug}`} className="text-primary hover:underline">
+              <a href={`/signup?redirect=/${profile.slug}`} className="text-primary hover:underline">
                 حساب بسازید
               </a>
             </p>

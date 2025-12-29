@@ -329,7 +329,7 @@ export default function ProfilesPage() {
   };
 
   const shareProfile = async (profile: Profile) => {
-    const profileUrl = `${window.location.origin}/p/${profile.slug}`;
+    const profileUrl = `${window.location.origin}/${profile.slug}`;
 
     if (navigator.share) {
       try {

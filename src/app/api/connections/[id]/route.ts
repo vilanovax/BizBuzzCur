@@ -11,31 +11,43 @@ export async function GET(
     const user = await getCurrentUser();
     const { id: targetUserId } = await params;
 
+    // If user is not logged in, return guest status
+    if (!user) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          isLoggedIn: false,
+          isConnected: false,
+          connectionRequest: null
+        }
+      });
+    }
+
     // Check connection request status
     const [request_status] = await sql`
       SELECT id, status, requester_id, addressee_id, created_at
       FROM connection_requests
-      WHERE (requester_id = ${user?.id || ''} AND addressee_id = ${targetUserId})
-         OR (requester_id = ${targetUserId} AND addressee_id = ${user?.id || ''})
+      WHERE (requester_id = ${user.id} AND addressee_id = ${targetUserId})
+         OR (requester_id = ${targetUserId} AND addressee_id = ${user.id})
       ORDER BY created_at DESC
       LIMIT 1
     `;
 
     // Check if already connected
-    const [connection] = user ? await sql`
+    const [connection] = await sql`
       SELECT id FROM contacts
       WHERE user_id = ${user.id} AND contact_user_id = ${targetUserId}
-    ` : [null];
+    `;
 
     return NextResponse.json({
       success: true,
       data: {
-        isLoggedIn: !!user,
+        isLoggedIn: true,
         isConnected: !!connection,
         connectionRequest: request_status ? {
           id: request_status.id,
           status: request_status.status,
-          isRequester: request_status.requester_id === user?.id,
+          isRequester: request_status.requester_id === user.id,
           created_at: request_status.created_at,
         } : null
       }

@@ -125,9 +125,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique slug (English only for URL compatibility)
-    // Use nanoid for unique, URL-safe slugs
-    const slug = `profile-${nanoid(10)}`;
+    // Generate short, clean slug (8 chars alphanumeric)
+    const slug = nanoid(8);
 
     // Create profile
     const [profile] = await sql<Profile[]>`

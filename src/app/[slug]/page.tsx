@@ -32,14 +32,19 @@ interface PageProps {
 // Fetch profile by slug (active and public)
 async function getProfile(slug: string): Promise<Profile | null> {
   try {
+    // Decode slug if URL encoded
+    const decodedSlug = decodeURIComponent(slug);
+    console.log('Looking for profile with slug:', decodedSlug);
+
     const [profile] = await sql<Profile[]>`
       SELECT * FROM profiles
-      WHERE slug = ${slug}
+      WHERE slug = ${decodedSlug}
         AND is_active = true
         AND is_public = true
         AND deleted_at IS NULL
         AND (expires_at IS NULL OR expires_at > NOW())
     `;
+    console.log('Found profile:', profile?.id || 'none');
     return profile || null;
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -222,12 +227,12 @@ export default async function PublicProfilePage({ params }: PageProps) {
       </div>
 
       {/* Profile Card */}
-      <div className="max-w-2xl mx-auto px-4 -mt-16 md:-mt-20 pb-12">
-        <div className="bg-card rounded-2xl shadow-xl border overflow-hidden">
+      <div className="max-w-2xl mx-auto px-4 pb-12 -mt-16 md:-mt-20">
+        <div className="bg-card rounded-2xl shadow-xl border overflow-visible pt-16 md:pt-20">
           {/* Profile Header */}
-          <div className="p-6 text-center relative">
+          <div className="pb-6 px-6 text-center relative">
             {/* Share Button - Top Right */}
-            <div className="absolute top-4 left-4 flex items-center gap-2">
+            <div className="absolute top-0 left-4 flex items-center gap-2" style={{ top: '-48px' }}>
               <button
                 className="p-2 rounded-full bg-muted/50 hover:bg-muted transition-colors"
                 title="اشتراک‌گذاری"
@@ -236,10 +241,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
               </button>
             </div>
 
-            {/* Avatar */}
-            <div className="mx-auto -mt-20 mb-4">
+            {/* Avatar - positioned above the card */}
+            <div className="absolute left-1/2 -translate-x-1/2 -top-28 md:-top-32">
               <div
-                className="w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-card shadow-lg overflow-hidden mx-auto"
+                className="w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-card shadow-lg overflow-hidden"
                 style={{ backgroundColor: profile.theme_color || '#e5e7eb' }}
               >
                 {profile.photo_url ? (
@@ -471,7 +476,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
             می‌خواهید این ارتباط را حفظ کنید؟
           </p>
           <a
-            href="/auth/signup"
+            href="/signup"
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <UserPlus className="w-4 h-4" />

@@ -266,7 +266,7 @@ export function EventRegistration({
             برای ذخیره اطلاعات و دسترسی آسان‌تر
           </p>
           <a
-            href={`/auth/signup?redirect=/e/${eventSlug}`}
+            href={`/signup?redirect=/e/${eventSlug}`}
             className="text-sm text-primary hover:underline"
           >
             حساب کاربری بسازید

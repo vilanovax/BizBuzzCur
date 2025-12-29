@@ -102,7 +102,7 @@ export function ProfileActions({ profile, ownerId }: ProfileActionsProps) {
   const handleConnect = () => {
     if (!isAuthenticated) {
       // Redirect to login
-      window.location.href = `/auth/login?redirect=/p/${profile.slug}`;
+      window.location.href = `/login?redirect=/${profile.slug}`;
       return;
     }
     setShowConnectionModal(true);
@@ -111,7 +111,7 @@ export function ProfileActions({ profile, ownerId }: ProfileActionsProps) {
   // Handle bookmark
   const handleBookmark = async () => {
     if (!isAuthenticated) {
-      window.location.href = `/auth/login?redirect=/p/${profile.slug}`;
+      window.location.href = `/login?redirect=/${profile.slug}`;
       return;
     }
 
