@@ -23,16 +23,17 @@ interface SidebarInfo {
   profileCount: number;
   firstProfilePhoto: string | null;
   trashCount: number;
+  eventCount: number;
 }
 
 const navigation = [
-  { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard, showCount: false },
-  { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase, showCount: false },
-  { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User, showCount: true },
-  { name: 'رویدادها', href: '/dashboard/events', icon: Calendar, showCount: false },
-  { name: 'شبکه من', href: '/dashboard/contacts', icon: Users, showCount: false },
-  { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2, showCount: false },
-  { name: 'اسکنر QR', href: '/dashboard/scan', icon: QrCode, showCount: false },
+  { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard, countKey: null },
+  { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase, countKey: null },
+  { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User, countKey: 'profileCount' as const },
+  { name: 'رویدادها', href: '/dashboard/events', icon: Calendar, countKey: 'eventCount' as const },
+  { name: 'شبکه من', href: '/dashboard/contacts', icon: Users, countKey: null },
+  { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2, countKey: null },
+  { name: 'اسکنر QR', href: '/dashboard/scan', icon: QrCode, countKey: null },
 ];
 
 const developerNav = [
@@ -97,14 +98,14 @@ export function Sidebar() {
             >
               <item.icon className="h-5 w-5" />
               <span className="flex-1">{item.name}</span>
-              {item.showCount && sidebarInfo && sidebarInfo.profileCount > 0 && (
+              {item.countKey && sidebarInfo && sidebarInfo[item.countKey] > 0 && (
                 <span className={cn(
                   'text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
                   isActive
                     ? 'bg-primary-foreground/20 text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
                 )}>
-                  {sidebarInfo.profileCount}
+                  {sidebarInfo[item.countKey]}
                 </span>
               )}
             </Link>

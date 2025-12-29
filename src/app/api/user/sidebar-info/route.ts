@@ -13,11 +13,12 @@ export async function GET() {
       );
     }
 
-    // Get first profile's photo, count of active profiles, and trash count
+    // Get first profile's photo, count of active profiles, trash count, and active events count
     const [stats] = await sql<[{
       profile_count: number;
       first_profile_photo: string | null;
       trash_count: number;
+      event_count: number;
     }]>`
       WITH first_profile AS (
         SELECT photo_url
@@ -35,14 +36,22 @@ export async function GET() {
         SELECT COUNT(*)::int as count
         FROM profiles
         WHERE user_id = ${user.id} AND deleted_at IS NOT NULL
+      ),
+      event_count AS (
+        SELECT COUNT(*)::int as count
+        FROM events
+        WHERE organizer_id = ${user.id}
+          AND status IN ('draft', 'published', 'ongoing')
       )
       SELECT
         profile_count.count as profile_count,
         first_profile.photo_url as first_profile_photo,
-        trash_count.count as trash_count
+        trash_count.count as trash_count,
+        event_count.count as event_count
       FROM profile_count
       LEFT JOIN first_profile ON true
       CROSS JOIN trash_count
+      CROSS JOIN event_count
     `;
 
     return NextResponse.json({
@@ -51,6 +60,7 @@ export async function GET() {
         profileCount: stats?.profile_count || 0,
         firstProfilePhoto: stats?.first_profile_photo || null,
         trashCount: stats?.trash_count || 0,
+        eventCount: stats?.event_count || 0,
       },
     });
   } catch (error) {
