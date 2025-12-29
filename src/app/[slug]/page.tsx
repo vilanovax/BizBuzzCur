@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import sql from '@/lib/db';
-import { DynamicIcon } from '@/lib/utils/icons';
 import type { Profile } from '@/types/profile';
 import {
   User,
@@ -9,7 +8,6 @@ import {
   Globe,
   MapPin,
   Briefcase,
-  Building2,
   Linkedin,
   Twitter,
   Instagram,
@@ -19,7 +17,13 @@ import {
   Download,
   ExternalLink,
   MessageCircle,
+  UserPlus,
+  Bookmark,
+  Share2,
+  Shield,
+  Flag,
 } from 'lucide-react';
+import { ProfileActions } from '@/components/profile/ProfileActions';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -33,6 +37,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
       WHERE slug = ${slug}
         AND is_active = true
         AND is_public = true
+        AND deleted_at IS NULL
         AND (expires_at IS NULL OR expires_at > NOW())
     `;
     return profile || null;
@@ -42,12 +47,43 @@ async function getProfile(slug: string): Promise<Profile | null> {
   }
 }
 
+// Get profile owner info
+async function getProfileOwner(userId: string) {
+  try {
+    const [owner] = await sql<{ id: string; first_name: string; last_name: string; avatar_url: string | null }[]>`
+      SELECT id, first_name, last_name, avatar_url
+      FROM users WHERE id = ${userId}
+    `;
+    return owner || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Get welcome message if exists
+async function getWelcomeMessage(profileId: string) {
+  try {
+    const [welcome] = await sql<{
+      message: string;
+      attachments: { type: string; url: string; name: string }[];
+      is_active: boolean;
+    }[]>`
+      SELECT message, attachments, is_active
+      FROM profile_welcome_messages
+      WHERE profile_id = ${profileId} AND is_active = true
+    `;
+    return welcome || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Check if profile exists but is inactive
 async function checkProfileExists(slug: string): Promise<{ exists: boolean; isInactive: boolean }> {
   try {
     const [profile] = await sql<{ is_public: boolean; is_active: boolean }[]>`
       SELECT is_public, is_active FROM profiles
-      WHERE slug = ${slug}
+      WHERE slug = ${slug} AND deleted_at IS NULL
     `;
     if (!profile) return { exists: false, isInactive: false };
     return { exists: true, isInactive: !profile.is_public || !profile.is_active };
@@ -74,11 +110,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const profile = await getProfile(slug);
 
   if (!profile) {
-    // Check if profile exists but is inactive
     const { exists, isInactive } = await checkProfileExists(slug);
 
     if (exists && isInactive) {
-      // Show inactive profile message
       return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-card rounded-2xl shadow-xl border p-8 text-center">
@@ -114,13 +148,19 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  // Increment view count (fire and forget)
+  // Increment view count
   incrementViewCount(profile.id);
 
-  // Get social links
+  // Get profile owner
+  const owner = await getProfileOwner(profile.user_id);
+
+  // Get welcome message
+  const welcomeMessage = await getWelcomeMessage(profile.id);
+
+  // Social links
   const socialLinks = profile.social_links || {};
 
-  // Format phone for display
+  // Format phone/email based on visibility
   const formatPhone = (phone: string | null, visibility: string) => {
     if (!phone) return null;
     if (visibility === 'hidden') return null;
@@ -130,7 +170,6 @@ export default async function PublicProfilePage({ params }: PageProps) {
     return phone;
   };
 
-  // Format email for display
   const formatEmail = (email: string | null, visibility: string) => {
     if (!email) return null;
     if (visibility === 'hidden') return null;
@@ -144,23 +183,26 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const displayPhone = formatPhone(profile.phone, profile.phone_visibility);
   const displayEmail = formatEmail(profile.email, profile.email_visibility);
 
-  // CTA button config
-  const ctaConfig = {
-    connect: { label: 'اتصال', icon: User },
-    message: { label: 'ارسال پیام', icon: MessageCircle },
-    book_meeting: { label: 'رزرو جلسه', icon: Calendar },
-    download_cv: { label: 'دانلود رزومه', icon: Download },
-    visit_website: { label: 'مشاهده سایت', icon: ExternalLink },
-    none: null,
+  // Prepare profile data for client component
+  const profileData = {
+    id: profile.id,
+    slug: profile.slug,
+    title: profile.title,
+    full_name: profile.full_name,
+    headline: profile.headline,
+    bio: profile.bio,
+    photo_url: profile.photo_url,
+    theme_color: profile.theme_color,
+    cta_type: profile.cta_type,
+    cta_url: profile.cta_url,
+    user_id: profile.user_id,
   };
-
-  const cta = ctaConfig[profile.cta_type];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
       {/* Header/Cover */}
       <div
-        className="h-32 md:h-48"
+        className="h-32 md:h-48 relative"
         style={{ backgroundColor: profile.theme_color || '#2563eb' }}
       >
         {profile.cover_url && (
@@ -170,6 +212,13 @@ export default async function PublicProfilePage({ params }: PageProps) {
             className="w-full h-full object-cover"
           />
         )}
+
+        {/* Context Badge - for event/meeting context */}
+        {profile.profile_type === 'event' && (
+          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium text-gray-700 shadow-sm">
+            پروفایل رویداد
+          </div>
+        )}
       </div>
 
       {/* Profile Card */}
@@ -177,6 +226,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
         <div className="bg-card rounded-2xl shadow-xl border overflow-hidden">
           {/* Profile Header */}
           <div className="p-6 text-center relative">
+            {/* Share Button - Top Right */}
+            <div className="absolute top-4 left-4 flex items-center gap-2">
+              <button
+                className="p-2 rounded-full bg-muted/50 hover:bg-muted transition-colors"
+                title="اشتراک‌گذاری"
+              >
+                <Share2 className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
             {/* Avatar */}
             <div className="mx-auto -mt-20 mb-4">
               <div
@@ -238,6 +297,44 @@ export default async function PublicProfilePage({ params }: PageProps) {
               <p className="text-foreground leading-relaxed whitespace-pre-wrap">
                 {profile.bio}
               </p>
+            </div>
+          )}
+
+          {/* Welcome Message (if exists) */}
+          {welcomeMessage && (
+            <div className="px-6 py-4 border-t bg-primary/5">
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: profile.theme_color || '#2563eb' }}
+                >
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    پیام خوش‌آمدگویی
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {welcomeMessage.message}
+                  </p>
+                  {welcomeMessage.attachments && welcomeMessage.attachments.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {welcomeMessage.attachments.map((att, idx) => (
+                        <a
+                          key={idx}
+                          href={att.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Download className="w-3 h-3" />
+                          {att.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -336,33 +433,50 @@ export default async function PublicProfilePage({ params }: PageProps) {
             </div>
           )}
 
-          {/* CTA Button */}
-          {cta && (
-            <div className="px-6 py-6 border-t">
-              <button
-                className="w-full py-4 rounded-xl font-medium text-white transition-all hover:opacity-90"
-                style={{ backgroundColor: profile.theme_color || '#2563eb' }}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <cta.icon className="w-5 h-5" />
-                  {cta.label}
-                </span>
+          {/* Action Buttons - Client Component */}
+          <ProfileActions
+            profile={profileData}
+            ownerId={profile.user_id}
+          />
+
+          {/* Trust & Privacy Footer */}
+          <div className="px-6 py-4 border-t bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Shield className="w-4 h-4" />
+                <span>اطلاعات انتخاب‌شده توسط صاحب پروفایل</span>
+              </div>
+              <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <Flag className="w-3 h-3" />
+                گزارش
               </button>
             </div>
-          )}
-
-          {/* Footer */}
-          <div className="px-6 py-4 border-t bg-muted/30 text-center">
-            <p className="text-xs text-muted-foreground">
-              ساخته شده با{' '}
-              <a
-                href="/"
-                className="text-primary hover:underline font-medium"
-              >
-                بیزباز
-              </a>
-            </p>
+            <div className="mt-3 pt-3 border-t text-center">
+              <p className="text-xs text-muted-foreground">
+                ساخته شده با{' '}
+                <a
+                  href="/"
+                  className="text-primary hover:underline font-medium"
+                >
+                  بیزباز
+                </a>
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* Signup CTA for Guests */}
+        <div className="mt-6 bg-card rounded-xl border p-4 text-center">
+          <p className="text-sm text-muted-foreground mb-3">
+            می‌خواهید این ارتباط را حفظ کنید؟
+          </p>
+          <a
+            href="/auth/signup"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            ساخت حساب رایگان
+          </a>
         </div>
       </div>
     </div>
@@ -387,6 +501,13 @@ export async function generateMetadata({ params }: PageProps) {
       title: profile.full_name || 'پروفایل بیزباز',
       description: profile.headline || 'پروفایل دیجیتال',
       images: profile.photo_url ? [{ url: profile.photo_url }] : [],
+      type: 'profile',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: profile.full_name || 'پروفایل بیزباز',
+      description: profile.headline || 'پروفایل دیجیتال',
+      images: profile.photo_url ? [profile.photo_url] : [],
     },
   };
 }

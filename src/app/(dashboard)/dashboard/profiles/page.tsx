@@ -19,6 +19,7 @@ import {
   Building2,
   Power,
   PowerOff,
+  Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -45,6 +46,7 @@ interface ProfileCardProps {
   duplicateProfile: (id: string) => void;
   toggleProfileStatus: (id: string, currentStatus: boolean) => void;
   deleteProfile: (id: string) => void;
+  shareProfile: (profile: Profile) => void;
 }
 
 function ProfileCard({
@@ -57,6 +59,7 @@ function ProfileCard({
   duplicateProfile,
   toggleProfileStatus,
   deleteProfile,
+  shareProfile,
 }: ProfileCardProps) {
   const TypeIcon = typeConfig.icon;
 
@@ -136,6 +139,16 @@ function ProfileCard({
                   >
                     <QrCode className="w-4 h-4" />
                     نمایش QR
+                  </button>
+                  <button
+                    onClick={() => {
+                      shareProfile(profile);
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    اشتراک‌گذاری
                   </button>
                   <Link
                     href={`/dashboard/profiles/${profile.id}`}
@@ -312,6 +325,36 @@ export default function ProfilesPage() {
       }
     } catch (err) {
       console.error('Toggle status error:', err);
+    }
+  };
+
+  const shareProfile = async (profile: Profile) => {
+    const profileUrl = `${window.location.origin}/p/${profile.slug}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: profile.title,
+          text: profile.headline || `پروفایل ${profile.title}`,
+          url: profileUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed, fallback to clipboard
+        if ((err as Error).name !== 'AbortError') {
+          copyToClipboard(profileUrl);
+        }
+      }
+    } else {
+      copyToClipboard(profileUrl);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('لینک پروفایل کپی شد!');
+    } catch (err) {
+      console.error('Copy failed:', err);
     }
   };
 
@@ -503,6 +546,7 @@ export default function ProfilesPage() {
                       duplicateProfile={duplicateProfile}
                       toggleProfileStatus={toggleProfileStatus}
                       deleteProfile={deleteProfile}
+                      shareProfile={shareProfile}
                     />
                   ))}
                 </div>
@@ -527,6 +571,7 @@ export default function ProfilesPage() {
                 duplicateProfile={duplicateProfile}
                 toggleProfileStatus={toggleProfileStatus}
                 deleteProfile={deleteProfile}
+                shareProfile={shareProfile}
               />
             );
           })}

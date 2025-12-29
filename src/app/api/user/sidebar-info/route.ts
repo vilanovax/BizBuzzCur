@@ -13,7 +13,7 @@ export async function GET() {
       );
     }
 
-    // Get first profile's photo, count of all profiles (excluding deleted), and trash count
+    // Get first profile's photo, count of active profiles, and trash count
     const [stats] = await sql<[{
       profile_count: number;
       first_profile_photo: string | null;
@@ -29,7 +29,7 @@ export async function GET() {
       profile_count AS (
         SELECT COUNT(*)::int as count
         FROM profiles
-        WHERE user_id = ${user.id} AND deleted_at IS NULL
+        WHERE user_id = ${user.id} AND deleted_at IS NULL AND is_public = true
       ),
       trash_count AS (
         SELECT COUNT(*)::int as count
