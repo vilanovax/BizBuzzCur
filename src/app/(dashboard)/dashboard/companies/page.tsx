@@ -36,6 +36,47 @@ export default function CompaniesPage() {
     }
   };
 
+  const handleToggleActive = async (companyId: string, isActive: boolean) => {
+    try {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_in_directory: isActive }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Update local state
+        setCompanies((prev) =>
+          prev.map((c) =>
+            c.id === companyId ? { ...c, show_in_directory: isActive } : c
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Toggle active error:', err);
+    }
+  };
+
+  const handleDelete = async (companyId: string) => {
+    try {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Remove from local state
+        setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+      } else {
+        alert(data.error || 'خطا در حذف شرکت');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('خطا در حذف شرکت');
+    }
+  };
+
   const filteredCompanies = companies.filter((company) =>
     !searchQuery ||
     company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,7 +156,12 @@ export default function CompaniesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCompanies.map((company) => (
-            <CompanyCard key={company.id} company={company} />
+            <CompanyCard
+              key={company.id}
+              company={company}
+              onToggleActive={handleToggleActive}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
