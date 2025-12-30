@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import type { UpdateJobRequest, CompanyRole, JobStatus } from '@/types/company';
+import type { CompanyRole } from '@/types/company';
+import type { UpdateJobRequest, JobStatus } from '@/types/job';
 
 // Helper to check if user can manage this job
 async function canManageJob(userId: string, jobId: string): Promise<{ allowed: boolean; companyId?: string }> {
@@ -185,7 +186,7 @@ export async function PUT(
 
     if (Object.keys(updateFields).length > 0) {
       const updates: string[] = [];
-      const values: unknown[] = [];
+      const values: (string | number | boolean | null)[] = [];
       let paramIndex = 1;
 
       const allowedFields = [
@@ -205,7 +206,7 @@ export async function PUT(
           }
 
           updates.push(`${field} = $${paramIndex}`);
-          values.push(value);
+          values.push(value as string | number | boolean | null);
           paramIndex++;
         }
       }

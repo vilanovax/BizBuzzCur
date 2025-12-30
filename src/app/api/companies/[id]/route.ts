@@ -100,7 +100,7 @@ export async function PUT(
 
     // Build update query dynamically
     const updates: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | boolean | null | string[])[] = [];
     let paramIndex = 1;
 
     const allowedFields = [
@@ -113,9 +113,10 @@ export async function PUT(
     ];
 
     for (const field of allowedFields) {
-      if (field in body && body[field as keyof UpdateCompanyRequest] !== undefined) {
+      const value = body[field as keyof UpdateCompanyRequest];
+      if (field in body && value !== undefined) {
         updates.push(`${field} = $${paramIndex}`);
-        values.push(body[field as keyof UpdateCompanyRequest]);
+        values.push(value ?? null);
         paramIndex++;
       }
     }

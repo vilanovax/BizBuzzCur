@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, Calendar, Users } from 'lucide-react';
+import { MessageCircle, Calendar, Users, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { InboxFilter } from '@/types/inbox';
 
@@ -32,6 +32,12 @@ const emptyStates: Record<InboxFilter, { icon: React.ElementType; title: string;
     title: 'گفتگویی از ایونت‌ها نداری',
     description: 'در ایونت‌ها شرکت کن و با شرکت‌کنندگان گفتگو کن',
     cta: { label: 'مشاهده ایونت‌ها', href: '/dashboard/events' },
+  },
+  jobs: {
+    icon: Briefcase,
+    title: 'گفتگویی از درخواست‌های شغلی نداری',
+    description: 'برای فرصت‌های شغلی درخواست بفرست تا گفتگوها اینجا نمایش داده شوند',
+    cta: { label: 'مشاهده فرصت‌ها', href: '/dashboard/jobs' },
   },
   archived: {
     icon: MessageCircle,

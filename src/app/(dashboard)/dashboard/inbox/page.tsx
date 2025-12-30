@@ -19,6 +19,7 @@ export default function InboxPage() {
     archived: 0,
     connected: 0,
     events: 0,
+    jobs: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

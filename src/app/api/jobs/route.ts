@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import type { CreateJobRequest, CompanyRole } from '@/types/company';
+import type { CompanyRole } from '@/types/company';
+import type { CreateJobRequest } from '@/types/job';
 
 // Helper to check if user can post jobs for a company
 async function canPostJobs(userId: string, companyId: string): Promise<boolean> {
