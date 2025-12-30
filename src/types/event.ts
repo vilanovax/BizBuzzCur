@@ -227,6 +227,10 @@ export interface EventAttendee {
   registered_at: string;
   updated_at: string;
 
+  // Guest specific
+  is_guest: boolean;
+  guest_session_id: string | null;
+
   // For networking events - attendee's status
   networking_status: string | null; // 'open_to_work', 'hiring', 'looking_for_partner', etc.
 
@@ -237,6 +241,75 @@ export interface EventAttendee {
     last_name: string;
     avatar_url: string | null;
   };
+}
+
+// Guest Session for temporary event access
+export interface GuestSession {
+  id: string;
+  session_token: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  event_id: string;
+  attendee_id: string | null;
+  is_active: boolean;
+  expires_at: string;
+  created_at: string;
+  last_active_at: string;
+}
+
+// Guest access permissions based on event type
+export interface GuestPermissions {
+  canViewEventInfo: boolean;
+  canJoinAsGuest: boolean;
+  canViewWelcomeMessage: boolean;
+  canUseEventChat: boolean;
+  canUse1to1Chat: boolean;
+  canViewPeopleList: boolean;
+  canDMParticipants: boolean;
+  canRequestConnect: boolean;
+  canBookmark: boolean;
+  canSaveHistory: boolean;
+  canViewNetworkingFeatures: boolean;
+  canViewJobBoard: boolean;
+}
+
+// Get guest permissions based on event type
+export function getGuestPermissions(eventType: EventType): GuestPermissions {
+  const basePermissions: GuestPermissions = {
+    canViewEventInfo: true,
+    canJoinAsGuest: true,
+    canViewWelcomeMessage: true,
+    canUseEventChat: false,
+    canUse1to1Chat: false,
+    canViewPeopleList: false,
+    canDMParticipants: false,
+    canRequestConnect: false,
+    canBookmark: false,
+    canSaveHistory: false,
+    canViewNetworkingFeatures: false,
+    canViewJobBoard: false,
+  };
+
+  if (eventType === 'focused_event') {
+    return {
+      ...basePermissions,
+      canUseEventChat: false,
+      canUse1to1Chat: true, // Limited 1-to-1 with host
+      canViewPeopleList: true, // Limited view
+    };
+  }
+
+  if (eventType === 'networking_event') {
+    return {
+      ...basePermissions,
+      canUseEventChat: true, // Can participate in event chat
+      canUse1to1Chat: false,
+      canViewPeopleList: true, // Limited view
+    };
+  }
+
+  return basePermissions;
 }
 
 export interface EventTicket {
@@ -371,6 +444,7 @@ export interface RegisterAttendeeInput {
   registration_data?: Record<string, unknown>;
   ticket_id?: string;
   networking_status?: string;
+  is_guest?: boolean;
 }
 
 export interface EventCheckInInput {

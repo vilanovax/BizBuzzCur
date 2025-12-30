@@ -12,7 +12,7 @@ export interface Conversation {
   updated_at: string;
 }
 
-export type ConversationContextType = 'profile_share' | 'event' | 'meeting' | 'connection' | 'direct';
+export type ConversationContextType = 'profile_share' | 'event' | 'meeting' | 'connection' | 'direct' | 'job_application';
 
 export interface ConversationWithDetails extends Conversation {
   other_participant: {
@@ -149,7 +149,10 @@ export type NotificationType =
   | 'profile_view'
   | 'event_reminder'
   | 'event_invitation'
-  | 'system';
+  | 'system'
+  | 'job_application'
+  | 'application_status'
+  | 'job_match';
 
 export interface NotificationWithRelated extends Notification {
   related_user?: {

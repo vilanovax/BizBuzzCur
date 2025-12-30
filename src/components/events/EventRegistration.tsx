@@ -2,12 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, Loader2, UserPlus, AlertCircle, Clock } from 'lucide-react';
+import {
+  CheckCircle,
+  Loader2,
+  UserPlus,
+  AlertCircle,
+  Clock,
+  User,
+  LogIn,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import type { EventType } from '@/types/event';
 
 interface EventRegistrationProps {
   eventId: string;
   eventSlug: string;
+  eventType: EventType;
   isFull: boolean;
   allowWaitlist: boolean;
   isRegistrationClosed: boolean;
@@ -15,9 +25,12 @@ interface EventRegistrationProps {
   isFree: boolean;
 }
 
+type RegistrationMode = 'initial' | 'guest_form' | 'login_prompt';
+
 export function EventRegistration({
   eventId,
   eventSlug,
+  eventType,
   isFull,
   allowWaitlist,
   isRegistrationClosed,
@@ -30,11 +43,13 @@ export function EventRegistration({
   const [error, setError] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [registrationStatus, setRegistrationStatus] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [mode, setMode] = useState<RegistrationMode>('initial');
+
   const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
     phone: '',
+    email: '',
     company: '',
     job_title: '',
   });
@@ -49,6 +64,7 @@ export function EventRegistration({
         if (data.success && data.data) {
           setIsRegistered(true);
           setRegistrationStatus(data.data.status);
+          setIsGuest(data.data.is_guest || false);
         }
       } catch (err) {
         // User not logged in or not registered
@@ -60,41 +76,47 @@ export function EventRegistration({
     checkRegistration();
   }, [eventId]);
 
-  const handleRegister = async () => {
-    // If not showing form, show it first for guest users
-    if (!showForm) {
-      // Try to register directly for logged-in users
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/events/${eventId}/attendees`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
+  // Try to register as logged-in user
+  const handleRegisterAsUser = async () => {
+    setLoading(true);
+    setError(null);
 
-        const data = await res.json();
+    try {
+      const res = await fetch(`/api/events/${eventId}/attendees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
 
-        if (data.success) {
-          setIsRegistered(true);
-          setRegistrationStatus(data.data.status);
-          router.refresh();
-        } else if (res.status === 401) {
-          // User not logged in, show form
-          setShowForm(true);
-        } else {
-          setError(data.error || 'خطا در ثبت‌نام');
-        }
-      } catch (err) {
-        setError('خطا در اتصال به سرور');
-      } finally {
-        setLoading(false);
+      const data = await res.json();
+
+      if (data.success) {
+        setIsRegistered(true);
+        setRegistrationStatus(data.data.status);
+        setIsGuest(false);
+        router.refresh();
+      } else if (res.status === 401) {
+        // User not logged in, show options
+        setMode('login_prompt');
+      } else {
+        setError(data.error || 'خطا در ثبت‌نام');
       }
+    } catch (err) {
+      setError('خطا در اتصال به سرور');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit guest registration
+  const handleGuestRegister = async () => {
+    if (!formData.full_name.trim()) {
+      setError('نام الزامی است');
       return;
     }
 
-    // Submit form for guest registration
-    if (!formData.full_name || !formData.email) {
-      setError('نام و ایمیل الزامی است');
+    if (!formData.phone.trim() && !formData.email.trim()) {
+      setError('موبایل یا ایمیل الزامی است');
       return;
     }
 
@@ -105,7 +127,10 @@ export function EventRegistration({
       const res = await fetch(`/api/events/${eventId}/attendees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          is_guest: true,
+        }),
       });
 
       const data = await res.json();
@@ -113,7 +138,8 @@ export function EventRegistration({
       if (data.success) {
         setIsRegistered(true);
         setRegistrationStatus(data.data.status);
-        setShowForm(false);
+        setIsGuest(true);
+        setMode('initial');
         router.refresh();
       } else {
         setError(data.error || 'خطا در ثبت‌نام');
@@ -150,9 +176,26 @@ export function EventRegistration({
               : 'ثبت‌نام شده'}
           </span>
         </div>
-        <p className="text-xs text-center text-muted-foreground">
-          جزئیات ثبت‌نام به ایمیل شما ارسال شده است
-        </p>
+
+        {isGuest && (
+          <div className="text-center pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2">
+              برای حفظ ارتباط‌ها و ادامه گفتگو
+            </p>
+            <a
+              href={`/signup?redirect=/e/${eventSlug}`}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              یک حساب رایگان بسازید
+            </a>
+          </div>
+        )}
+
+        {!isGuest && (
+          <p className="text-xs text-center text-muted-foreground">
+            جزئیات ثبت‌نام به ایمیل شما ارسال شده است
+          </p>
+        )}
       </div>
     );
   }
@@ -183,15 +226,66 @@ export function EventRegistration({
     );
   }
 
-  // Show registration form for guests
-  if (showForm) {
+  // Show login prompt (when user clicks register but is not logged in)
+  if (mode === 'login_prompt') {
     return (
       <div className="space-y-4">
+        <p className="text-sm text-center text-muted-foreground">
+          برای ثبت‌نام، وارد حساب کاربری شوید یا به عنوان مهمان ادامه دهید
+        </p>
+
+        <div className="space-y-2">
+          <a href={`/login?redirect=/e/${eventSlug}`}>
+            <Button className="w-full" variant="default">
+              <LogIn className="w-4 h-4 ml-2" />
+              ورود به حساب کاربری
+            </Button>
+          </a>
+
+          <Button
+            onClick={() => setMode('guest_form')}
+            variant="outline"
+            className="w-full"
+          >
+            <User className="w-4 h-4 ml-2" />
+            ادامه به‌عنوان مهمان
+          </Button>
+        </div>
+
+        <div className="text-center pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-1">حساب کاربری ندارید؟</p>
+          <a
+            href={`/signup?redirect=/e/${eventSlug}`}
+            className="text-sm text-primary hover:underline"
+          >
+            ساخت حساب رایگان
+          </a>
+        </div>
+
+        <button
+          onClick={() => setMode('initial')}
+          className="w-full text-sm text-muted-foreground hover:text-foreground"
+        >
+          بازگشت
+        </button>
+      </div>
+    );
+  }
+
+  // Show guest registration form
+  if (mode === 'guest_form') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <User className="w-4 h-4" />
+          <span>ورود به‌عنوان مهمان</span>
+        </div>
+
         <div className="space-y-3">
           <div>
             <input
               type="text"
-              placeholder="نام و نام خانوادگی *"
+              placeholder="نام *"
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               className="w-full px-3 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -199,38 +293,23 @@ export function EventRegistration({
           </div>
           <div>
             <input
-              type="email"
-              placeholder="ایمیل *"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              dir="ltr"
-            />
-          </div>
-          <div>
-            <input
               type="tel"
-              placeholder="شماره تماس"
+              placeholder="شماره موبایل *"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className="w-full px-3 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
               dir="ltr"
             />
+            <p className="text-xs text-muted-foreground mt-1">یا</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div>
             <input
-              type="text"
-              placeholder="شرکت"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              type="email"
+              placeholder="ایمیل"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <input
-              type="text"
-              placeholder="سمت"
-              value={formData.job_title}
-              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              dir="ltr"
             />
           </div>
         </div>
@@ -245,38 +324,41 @@ export function EventRegistration({
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => setShowForm(false)}
+            onClick={() => {
+              setMode('initial');
+              setError(null);
+            }}
             className="flex-1"
           >
             انصراف
           </Button>
-          <Button onClick={handleRegister} disabled={loading} className="flex-1">
+          <Button onClick={handleGuestRegister} disabled={loading} className="flex-1">
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : isFull && allowWaitlist ? (
               'ثبت در لیست انتظار'
             ) : (
-              'ثبت‌نام'
+              'ورود به ایونت'
             )}
           </Button>
         </div>
 
-        <div className="text-center pt-2 border-t">
+        <div className="text-center pt-3 border-t">
           <p className="text-xs text-muted-foreground mb-2">
-            برای ذخیره اطلاعات و دسترسی آسان‌تر
+            با ساخت حساب، دسترسی کامل‌تری خواهید داشت
           </p>
           <a
             href={`/signup?redirect=/e/${eventSlug}`}
             className="text-sm text-primary hover:underline"
           >
-            حساب کاربری بسازید
+            ساخت حساب رایگان
           </a>
         </div>
       </div>
     );
   }
 
-  // Show register button
+  // Show initial register button
   return (
     <div className="space-y-3">
       {error && (
@@ -286,7 +368,7 @@ export function EventRegistration({
         </div>
       )}
 
-      <Button onClick={handleRegister} disabled={loading} className="w-full" size="lg">
+      <Button onClick={handleRegisterAsUser} disabled={loading} className="w-full" size="lg">
         {loading ? (
           <Loader2 className="w-5 h-5 animate-spin" />
         ) : isFull && allowWaitlist ? (

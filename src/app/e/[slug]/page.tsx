@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import sql from '@/lib/db';
-import type { Event, EventAttendee } from '@/types/event';
+import { getCurrentUser } from '@/lib/auth';
+import type { Event, EventAttendee, EventAttachment } from '@/types/event';
 import { EVENT_TYPE_CONFIG } from '@/types/event';
 import {
   Calendar,
@@ -18,6 +19,12 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
+  Paperclip,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  File,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { EventRegistration } from '@/components/events/EventRegistration';
 
@@ -26,8 +33,27 @@ interface PageProps {
 }
 
 // Fetch event by slug
-async function getEvent(slug: string): Promise<Event | null> {
+async function getEvent(slug: string, userId?: string): Promise<Event | null> {
   try {
+    // If user is the organizer, they can see any status
+    if (userId) {
+      const [event] = await sql<Event[]>`
+        SELECT e.*,
+          json_build_object(
+            'id', u.id,
+            'first_name', u.first_name,
+            'last_name', u.last_name,
+            'avatar_url', u.avatar_url
+          ) as organizer
+        FROM events e
+        LEFT JOIN users u ON u.id = e.organizer_id
+        WHERE e.slug = ${slug}
+          AND e.organizer_id = ${userId}
+      `;
+      if (event) return event;
+    }
+
+    // For public access - only published/ongoing and public/unlisted
     const [event] = await sql<Event[]>`
       SELECT e.*,
         json_build_object(
@@ -96,11 +122,24 @@ async function incrementViewCount(eventId: string) {
 
 export default async function PublicEventPage({ params }: PageProps) {
   const { slug } = await params;
-  const event = await getEvent(slug);
+
+  // Try to get current user (for organizer preview)
+  const user = await getCurrentUser();
+  const event = await getEvent(slug, user?.id);
 
   if (!event) {
     notFound();
   }
+
+  // Check if this is a draft preview (organizer viewing their own draft)
+  const isDraftPreview = event.status === 'draft' && user?.id === event.organizer_id;
+
+  // Parse welcome_attachments if it's a string (JSONB from database)
+  const attachments: EventAttachment[] = event.welcome_attachments
+    ? (typeof event.welcome_attachments === 'string'
+        ? JSON.parse(event.welcome_attachments)
+        : event.welcome_attachments)
+    : [];
 
   // Increment view count
   incrementViewCount(event.id);
@@ -141,6 +180,16 @@ export default async function PublicEventPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
+      {/* Draft Preview Banner */}
+      {isDraftPreview && (
+        <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm font-medium">
+          <span>این پیش‌نمایش است. رویداد هنوز منتشر نشده و فقط شما می‌توانید آن را ببینید.</span>
+          <Link href={`/dashboard/events/${event.id}`} className="underline mr-2 hover:no-underline">
+            ویرایش و انتشار
+          </Link>
+        </div>
+      )}
+
       {/* Banner */}
       <div
         className="h-48 md:h-64 relative"
@@ -258,6 +307,93 @@ export default async function PublicEventPage({ params }: PageProps) {
                   <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                     {event.description}
                   </p>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {attachments.length > 0 && (
+                <div className="px-6 py-4 border-t">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Paperclip className="w-5 h-5 text-primary" />
+                    فایل‌های ضمیمه
+                  </h3>
+                  <div className="space-y-2">
+                    {attachments.map((attachment, index) => {
+                      const isImage = attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                      const isPDF = attachment.url?.match(/\.pdf$/i);
+                      const isLink = attachment.type === 'link';
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group"
+                        >
+                          {/* Icon */}
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            {isLink ? (
+                              <LinkIcon className="w-5 h-5 text-primary" />
+                            ) : isImage ? (
+                              <ImageIcon className="w-5 h-5 text-primary" />
+                            ) : isPDF ? (
+                              <FileText className="w-5 h-5 text-primary" />
+                            ) : (
+                              <File className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {attachment.name || 'فایل ضمیمه'}
+                            </p>
+                            {attachment.size && (
+                              <p className="text-xs text-muted-foreground">
+                                {(attachment.size / 1024).toFixed(0)} KB
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action Button */}
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={!isLink}
+                            className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors opacity-70 group-hover:opacity-100"
+                          >
+                            {isLink ? (
+                              <ExternalLink className="w-4 h-4" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Image Gallery Preview */}
+                  {attachments.some(a => a.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) && (
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {attachments
+                        .filter(a => a.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+                        .map((attachment, index) => (
+                          <a
+                            key={index}
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative aspect-video rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity"
+                          >
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name || 'تصویر ضمیمه'}
+                              className="w-full h-full object-cover"
+                            />
+                          </a>
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -391,6 +527,7 @@ export default async function PublicEventPage({ params }: PageProps) {
                 <EventRegistration
                   eventId={event.id}
                   eventSlug={event.slug}
+                  eventType={event.event_type as 'focused_event' | 'networking_event'}
                   isFull={isFull}
                   allowWaitlist={event.allow_waitlist}
                   isRegistrationClosed={isRegistrationClosed || false}

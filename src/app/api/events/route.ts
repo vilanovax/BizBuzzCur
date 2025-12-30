@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { nanoid } from 'nanoid';
+import { slugify } from '@/lib/utils/slugify';
 import type { CreateEventInput, EventFeatures, EventType } from '@/types/event';
 import { FOCUSED_EVENT_FEATURES, NETWORKING_EVENT_FEATURES } from '@/types/event';
 
@@ -119,8 +119,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate slug
-    const slug = `event-${nanoid(10)}`;
+    // Generate slug from title (e.g., "همایش بازاریابی" -> "hamayesh-bazaryabi-abc123")
+    const slug = slugify(title);
 
     // Get default features based on event type
     const defaultFeatures = event_type === 'focused_event'

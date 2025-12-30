@@ -16,6 +16,7 @@ import {
   QrCode,
   Briefcase,
   Trash2,
+  Inbox,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,14 +25,16 @@ interface SidebarInfo {
   firstProfilePhoto: string | null;
   trashCount: number;
   eventCount: number;
+  inboxUnreadCount: number;
 }
 
 const navigation = [
   { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard, countKey: null },
+  { name: 'Inbox', href: '/dashboard/inbox', icon: Inbox, countKey: 'inboxUnreadCount' as const },
   { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase, countKey: null },
   { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User, countKey: 'profileCount' as const },
   { name: 'رویدادها', href: '/dashboard/events', icon: Calendar, countKey: 'eventCount' as const },
-  { name: 'شبکه من', href: '/dashboard/contacts', icon: Users, countKey: null },
+  { name: 'ارتباط‌ها', href: '/dashboard/connections', icon: Users, countKey: null },
   { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2, countKey: null },
   { name: 'اسکنر QR', href: '/dashboard/scan', icon: QrCode, countKey: null },
 ];

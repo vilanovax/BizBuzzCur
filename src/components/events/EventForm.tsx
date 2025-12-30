@@ -62,6 +62,20 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Parse welcome_attachments if it's a string (from database JSONB)
+  const parseAttachments = (attachments: unknown): EventAttachment[] => {
+    if (!attachments) return [];
+    if (typeof attachments === 'string') {
+      try {
+        return JSON.parse(attachments);
+      } catch {
+        return [];
+      }
+    }
+    if (Array.isArray(attachments)) return attachments;
+    return [];
+  };
+
   // Form state
   const [formData, setFormData] = useState<CreateEventInput>({
     title: initialData?.title || '',
@@ -87,7 +101,7 @@ export function EventForm({ initialData, eventId, mode = 'create' }: EventFormPr
     theme_color: initialData?.theme_color || '#2563eb',
     welcome_message: initialData?.welcome_message || '',
     banner_url: initialData?.banner_url || '',
-    welcome_attachments: initialData?.welcome_attachments || [],
+    welcome_attachments: parseAttachments(initialData?.welcome_attachments),
   });
 
   const [features, setFeatures] = useState<EventFeatures>(

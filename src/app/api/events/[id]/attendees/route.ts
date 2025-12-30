@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { nanoid } from 'nanoid';
+import { cookies } from 'next/headers';
 import type { RegisterAttendeeInput } from '@/types/event';
 
 // GET /api/events/[id]/attendees - Get event attendees
@@ -126,6 +127,7 @@ export async function POST(
       registration_data = {},
       ticket_id,
       networking_status,
+      is_guest = false,
     } = body;
 
     // Get event
@@ -188,17 +190,35 @@ export async function POST(
           { status: 400 }
         );
       }
-    } else if (email) {
-      const [existing] = await sql`
-        SELECT id FROM event_attendees
-        WHERE event_id = ${eventId} AND email = ${email}
-      `;
+    } else if (email || phone) {
+      // Check by email
+      if (email) {
+        const [existing] = await sql`
+          SELECT id FROM event_attendees
+          WHERE event_id = ${eventId} AND email = ${email}
+        `;
 
-      if (existing) {
-        return NextResponse.json(
-          { success: false, error: 'Email already registered for this event' },
-          { status: 400 }
-        );
+        if (existing) {
+          return NextResponse.json(
+            { success: false, error: 'این ایمیل قبلاً در این ایونت ثبت‌نام کرده' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Check by phone
+      if (phone) {
+        const [existing] = await sql`
+          SELECT id FROM event_attendees
+          WHERE event_id = ${eventId} AND phone = ${phone}
+        `;
+
+        if (existing) {
+          return NextResponse.json(
+            { success: false, error: 'این شماره موبایل قبلاً در این ایونت ثبت‌نام کرده' },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -221,6 +241,9 @@ export async function POST(
     // Generate ticket code
     const ticketCode = `${event.slug.toUpperCase()}-${nanoid(8).toUpperCase()}`;
 
+    // Determine if this is a guest registration
+    const isGuestRegistration = is_guest || (!user && (full_name || phone || email));
+
     // Create attendee
     const [attendee] = await sql`
       INSERT INTO event_attendees (
@@ -236,7 +259,8 @@ export async function POST(
         role,
         ticket_code,
         networking_status,
-        payment_status
+        payment_status,
+        is_guest
       ) VALUES (
         ${eventId},
         ${user?.id || null},
@@ -250,7 +274,8 @@ export async function POST(
         'attendee',
         ${ticketCode},
         ${networking_status || null},
-        ${event.is_free ? 'not_required' : 'pending'}
+        ${event.is_free ? 'not_required' : 'pending'},
+        ${isGuestRegistration ? true : false}
       )
       RETURNING *
     `;
@@ -276,10 +301,64 @@ export async function POST(
       )
     `;
 
-    return NextResponse.json({
+    // Create guest session for guest registrations
+    let guestSessionToken: string | null = null;
+    if (isGuestRegistration) {
+      guestSessionToken = nanoid(32);
+
+      // Calculate expiry: event end date + 24 hours, or 7 days if no end date
+      const eventEndDate = event.end_date ? new Date(event.end_date) : new Date(event.start_date);
+      const expiresAt = new Date(eventEndDate.getTime() + 24 * 60 * 60 * 1000);
+
+      // Create guest session
+      await sql`
+        INSERT INTO guest_sessions (
+          session_token,
+          name,
+          phone,
+          email,
+          event_id,
+          attendee_id,
+          expires_at
+        ) VALUES (
+          ${guestSessionToken},
+          ${full_name || 'Guest'},
+          ${phone || null},
+          ${email || null},
+          ${eventId},
+          ${attendee.id},
+          ${expiresAt.toISOString()}
+        )
+      `;
+
+      // Update attendee with guest_session_id
+      await sql`
+        UPDATE event_attendees
+        SET guest_session_id = (
+          SELECT id FROM guest_sessions WHERE session_token = ${guestSessionToken}
+        )
+        WHERE id = ${attendee.id}
+      `;
+    }
+
+    // Create response with guest session cookie if applicable
+    const response = NextResponse.json({
       success: true,
       data: attendee,
     });
+
+    if (guestSessionToken) {
+      const cookieStore = await cookies();
+      cookieStore.set('guest_session', guestSessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: '/',
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('Register attendee error:', error);
     return NextResponse.json(
