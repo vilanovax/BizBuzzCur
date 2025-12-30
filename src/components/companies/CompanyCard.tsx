@@ -183,7 +183,7 @@ export function CompanyCard({ company, onClick, onToggleActive, onDelete }: Comp
                 {/* More Options Button */}
                 <button
                   onClick={handleMenuClick}
-                  className="p-1.5 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors"
                   title="گزینه‌های بیشتر"
                 >
                   <MoreVertical className="w-4 h-4 text-muted-foreground" />
