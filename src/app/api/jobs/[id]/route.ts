@@ -6,14 +6,25 @@ import type { UpdateJobRequest, JobStatus } from '@/types/job';
 
 // Helper to check if user can manage this job
 async function canManageJob(userId: string, jobId: string): Promise<{ allowed: boolean; companyId?: string }> {
+  // Check via team member OR as company creator
   const [job] = await sql`
     SELECT j.company_id
     FROM job_ads j
-    JOIN company_team_members ctm ON ctm.company_id = j.company_id
+    JOIN companies c ON c.id = j.company_id
     WHERE j.id = ${jobId}
-      AND ctm.user_id = ${userId}
-      AND ctm.invitation_status = 'accepted'
-      AND ctm.role IN ('owner', 'admin', 'recruiter')
+      AND (
+        -- Company creator (owner)
+        c.created_by = ${userId}
+        OR
+        -- Team member with proper role
+        EXISTS (
+          SELECT 1 FROM company_team_members ctm
+          WHERE ctm.company_id = j.company_id
+            AND ctm.user_id = ${userId}
+            AND ctm.invitation_status = 'accepted'
+            AND ctm.role IN ('owner', 'admin', 'recruiter')
+        )
+      )
   `;
   return { allowed: !!job, companyId: job?.company_id };
 }

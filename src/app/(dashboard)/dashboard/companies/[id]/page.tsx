@@ -18,9 +18,17 @@ import {
   Loader2,
   Settings,
   MessageSquare,
+  MoreVertical,
+  Eye,
+  Share2,
+  Trash2,
+  Power,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
 import { cn } from '@/lib/utils/cn';
 import type { CompanyWithStats, CompanyRole } from '@/types/company';
 import {
@@ -46,8 +54,57 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [togglingJob, setTogglingJob] = useState<string | null>(null);
+  const [deletingJob, setDeletingJob] = useState<string | null>(null);
+  const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
 
   const isAdmin = canManageCompany(company?.user_role);
+
+  // Toggle job status (published <-> draft)
+  const toggleJobStatus = async (jobId: string, currentStatus: string) => {
+    setTogglingJob(jobId);
+    try {
+      const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+      const res = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus as any } : j));
+      }
+    } catch (err) {
+      console.error('Error toggling job status:', err);
+    } finally {
+      setTogglingJob(null);
+    }
+  };
+
+  // Delete job
+  const deleteJob = async (jobId: string) => {
+    if (!confirm('آیا از حذف این آگهی اطمینان دارید؟')) return;
+    setDeletingJob(jobId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setJobs(jobs.filter(j => j.id !== jobId));
+      }
+    } catch (err) {
+      console.error('Error deleting job:', err);
+    } finally {
+      setDeletingJob(null);
+    }
+  };
+
+  // Copy share link
+  const copyShareLink = (jobId: string) => {
+    const url = `${window.location.origin}/jobs/${jobId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedJobId(jobId);
+    setTimeout(() => setCopiedJobId(null), 2000);
+  };
 
   useEffect(() => {
     fetchCompany();
@@ -497,11 +554,73 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
                             </Link>
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/dashboard/jobs/${job.id}`}>
-                            مشاهده
-                          </Link>
-                        </Button>
+
+                        {/* Three-dot menu */}
+                        <DropdownMenu
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          }
+                        >
+                          {/* Preview */}
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/jobs/${job.id}`)}>
+                            <Eye className="w-4 h-4" />
+                            پیش‌نمایش
+                          </DropdownMenuItem>
+
+                          {/* Share Link */}
+                          <DropdownMenuItem onClick={() => copyShareLink(job.id)}>
+                            {copiedJobId === job.id ? (
+                              <>
+                                <Check className="w-4 h-4 text-green-600" />
+                                کپی شد!
+                              </>
+                            ) : (
+                              <>
+                                <Share2 className="w-4 h-4" />
+                                اشتراک‌گذاری
+                              </>
+                            )}
+                          </DropdownMenuItem>
+
+                          {isAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+
+                              {/* Edit */}
+                              <DropdownMenuItem onClick={() => router.push(`/dashboard/jobs/${job.id}/edit`)}>
+                                <Edit className="w-4 h-4" />
+                                ویرایش
+                              </DropdownMenuItem>
+
+                              {/* Toggle Active/Inactive */}
+                              <DropdownMenuItem
+                                onClick={() => toggleJobStatus(job.id, job.status)}
+                                disabled={togglingJob === job.id}
+                              >
+                                <Power className="w-4 h-4" />
+                                {togglingJob === job.id
+                                  ? 'در حال تغییر...'
+                                  : job.status === 'published'
+                                  ? 'غیرفعال کردن'
+                                  : 'فعال کردن'}
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              {/* Delete */}
+                              <DropdownMenuItem
+                                onClick={() => deleteJob(job.id)}
+                                variant="danger"
+                                disabled={deletingJob === job.id}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {deletingJob === job.id ? 'در حال حذف...' : 'حذف'}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenu>
                       </div>
                     </div>
                   </CardContent>

@@ -17,6 +17,7 @@ import {
   Briefcase,
   Trash2,
   Inbox,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Inbox', href: '/dashboard/inbox', icon: Inbox, countKey: 'inboxUnreadCount' as const },
   { name: 'هویت حرفه‌ای', href: '/dashboard/identity', icon: Briefcase, countKey: null },
   { name: 'پروفایل‌ها', href: '/dashboard/profiles', icon: User, countKey: 'profileCount' as const },
+  { name: 'فرصت‌های شغلی', href: '/dashboard/jobs', icon: Search, countKey: null },
   { name: 'رویدادها', href: '/dashboard/events', icon: Calendar, countKey: 'eventCount' as const },
   { name: 'ارتباط‌ها', href: '/dashboard/connections', icon: Users, countKey: null },
   { name: 'شرکت‌ها', href: '/dashboard/companies', icon: Building2, countKey: null },

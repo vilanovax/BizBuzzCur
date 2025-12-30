@@ -25,44 +25,27 @@ export async function GET(request: NextRequest) {
     // Get user's profile info for matching
     const [userProfile] = await sql`
       SELECT
-        p.domain_id,
-        p.skills,
-        p.specialization_id,
         p.city,
-        p.country
+        p.country,
+        p.industry
       FROM profiles p
-      WHERE p.user_id = ${user.id} AND p.is_primary = true
+      WHERE p.user_id = ${user.id}
+      ORDER BY p.created_at ASC
+      LIMIT 1
     `;
 
-    // Get events user has participated in (for context-based discovery)
+    // Get events user has attended (for context-based discovery)
     const userEventIds = await sql`
       SELECT DISTINCT e.id
       FROM events e
-      JOIN event_participants ep ON ep.event_id = e.id
-      WHERE ep.user_id = ${user.id}
+      JOIN event_attendees ea ON ea.event_id = e.id
+      WHERE ea.user_id = ${user.id}
+        AND ea.status = 'approved'
     `;
     const eventIds = userEventIds.map(e => e.id);
+    const hasEvents = eventIds.length > 0;
 
-    // Build filter conditions
-    let filters = sql``;
-
-    if (domainId) {
-      filters = sql`${filters} AND j.domain_id = ${domainId}`;
-    }
-    if (specializationId) {
-      filters = sql`${filters} AND j.specialization_id = ${specializationId}`;
-    }
-    if (employmentType) {
-      filters = sql`${filters} AND j.employment_type = ${employmentType}`;
-    }
-    if (locationType) {
-      filters = sql`${filters} AND j.location_type = ${locationType}`;
-    }
-    if (experienceLevel) {
-      filters = sql`${filters} AND j.experience_level = ${experienceLevel}`;
-    }
-
-    // Get jobs with relevance scoring
+    // Build base query - simpler approach without dynamic relevance scoring in SQL
     const jobs = await sql`
       SELECT
         j.*,
@@ -80,62 +63,28 @@ export async function GET(request: NextRequest) {
         s.name_fa as specialization_name,
         s.name_en as specialization_name_en,
         (SELECT COUNT(*) FROM job_applications WHERE job_id = j.id) as application_count,
-        -- Check if user already applied
         EXISTS(
           SELECT 1 FROM job_applications ja
           WHERE ja.job_id = j.id AND ja.applicant_id = ${user.id}
-        ) as has_applied,
-        -- Relevance scoring
-        CASE
-          -- Same domain gets higher score
-          WHEN j.domain_id = ${userProfile?.domain_id || null} THEN 30
-          ELSE 0
-        END +
-        CASE
-          -- Same specialization gets higher score
-          WHEN j.specialization_id = ${userProfile?.specialization_id || null} THEN 20
-          ELSE 0
-        END +
-        CASE
-          -- Same city gets higher score
-          WHEN j.location ILIKE ${'%' + (userProfile?.city || '') + '%'} THEN 10
-          ELSE 0
-        END +
-        CASE
-          -- Event-related jobs get higher score
-          WHEN j.event_id = ANY(${eventIds.length > 0 ? eventIds : ['00000000-0000-0000-0000-000000000000']}) THEN 25
-          ELSE 0
-        END +
-        CASE
-          -- Featured jobs get higher score
-          WHEN j.is_featured = true THEN 15
-          ELSE 0
-        END +
-        CASE
-          -- Recently posted gets higher score
-          WHEN j.published_at > NOW() - INTERVAL '7 days' THEN 10
-          WHEN j.published_at > NOW() - INTERVAL '30 days' THEN 5
-          ELSE 0
-        END as relevance_score,
-        -- Match reason flags
-        j.domain_id = ${userProfile?.domain_id || null} as matches_domain,
-        j.specialization_id = ${userProfile?.specialization_id || null} as matches_specialization,
-        j.event_id = ANY(${eventIds.length > 0 ? eventIds : ['00000000-0000-0000-0000-000000000000']}) as from_event
+        ) as has_applied
       FROM job_ads j
       JOIN companies c ON c.id = j.company_id
       LEFT JOIN professional_domains d ON d.id = j.domain_id
       LEFT JOIN specializations s ON s.id = j.specialization_id
       WHERE j.status = 'published'
         AND (j.expires_at IS NULL OR j.expires_at > NOW())
-        -- Exclude jobs from user's own companies
         AND NOT EXISTS (
           SELECT 1 FROM company_team_members ctm
           WHERE ctm.company_id = j.company_id
             AND ctm.user_id = ${user.id}
             AND ctm.invitation_status = 'accepted'
         )
-        ${filters}
-      ORDER BY relevance_score DESC, j.is_featured DESC, j.published_at DESC
+        ${domainId ? sql`AND j.domain_id = ${domainId}` : sql``}
+        ${specializationId ? sql`AND j.specialization_id = ${specializationId}` : sql``}
+        ${employmentType ? sql`AND j.employment_type = ${employmentType}` : sql``}
+        ${locationType ? sql`AND j.location_type = ${locationType}` : sql``}
+        ${experienceLevel ? sql`AND j.experience_level = ${experienceLevel}` : sql``}
+      ORDER BY j.is_featured DESC, j.published_at DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
@@ -152,12 +101,56 @@ export async function GET(request: NextRequest) {
             AND ctm.user_id = ${user.id}
             AND ctm.invitation_status = 'accepted'
         )
-        ${filters}
+        ${domainId ? sql`AND j.domain_id = ${domainId}` : sql``}
+        ${specializationId ? sql`AND j.specialization_id = ${specializationId}` : sql``}
+        ${employmentType ? sql`AND j.employment_type = ${employmentType}` : sql``}
+        ${locationType ? sql`AND j.location_type = ${locationType}` : sql``}
+        ${experienceLevel ? sql`AND j.experience_level = ${experienceLevel}` : sql``}
     `;
 
-    return NextResponse.json({
-      success: true,
-      data: jobs.map(job => ({
+    // Calculate relevance in JavaScript instead of SQL for simplicity
+    const processedJobs = jobs.map(job => {
+      let relevanceScore = 0;
+      const matchReasons = {
+        domain: false,
+        specialization: false,
+        event: false,
+      };
+
+      // City match
+      if (userProfile?.city && job.location?.toLowerCase().includes(userProfile.city.toLowerCase())) {
+        relevanceScore += 10;
+      }
+
+      // Industry match (using profile industry instead of domain)
+      if (userProfile?.industry && job.company_industry?.toLowerCase() === userProfile.industry.toLowerCase()) {
+        relevanceScore += 20;
+        matchReasons.domain = true;
+      }
+
+      // Event match
+      if (hasEvents && job.event_id && eventIds.includes(job.event_id)) {
+        relevanceScore += 25;
+        matchReasons.event = true;
+      }
+
+      // Featured
+      if (job.is_featured) {
+        relevanceScore += 15;
+      }
+
+      // Recent
+      if (job.published_at) {
+        const publishedAt = new Date(job.published_at);
+        const daysSincePublished = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSincePublished <= 7) {
+          relevanceScore += 10;
+        } else if (daysSincePublished <= 30) {
+          relevanceScore += 5;
+        }
+      }
+
+      return {
         id: job.id,
         title: job.title,
         description: job.description,
@@ -166,19 +159,15 @@ export async function GET(request: NextRequest) {
         location: job.location,
         salary_range: job.salary_range,
         experience_level: job.experience_level,
-        required_skills: job.required_skills,
-        preferred_skills: job.preferred_skills,
+        required_skills: job.required_skills || [],
+        preferred_skills: job.preferred_skills || [],
         is_featured: job.is_featured,
         published_at: job.published_at,
         expires_at: job.expires_at,
         application_count: parseInt(job.application_count || '0'),
         has_applied: job.has_applied,
-        relevance_score: job.relevance_score,
-        match_reasons: {
-          domain: job.matches_domain,
-          specialization: job.matches_specialization,
-          event: job.from_event,
-        },
+        relevance_score: relevanceScore,
+        match_reasons: matchReasons,
         company: {
           id: job.company_id,
           name: job.company_name,
@@ -198,7 +187,15 @@ export async function GET(request: NextRequest) {
           name_fa: job.specialization_name,
           name_en: job.specialization_name_en,
         } : null,
-      })),
+      };
+    });
+
+    // Sort by relevance score
+    processedJobs.sort((a, b) => b.relevance_score - a.relevance_score);
+
+    return NextResponse.json({
+      success: true,
+      data: processedJobs,
       pagination: {
         total: parseInt(countResult?.total || '0'),
         limit,
@@ -206,9 +203,8 @@ export async function GET(request: NextRequest) {
         has_more: offset + jobs.length < parseInt(countResult?.total || '0'),
       },
       user_context: {
-        domain_id: userProfile?.domain_id,
-        specialization_id: userProfile?.specialization_id,
-        skills: userProfile?.skills || [],
+        industry: userProfile?.industry,
+        city: userProfile?.city,
         event_count: eventIds.length,
       },
     });
