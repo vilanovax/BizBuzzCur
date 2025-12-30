@@ -2,9 +2,10 @@
 
 import * as React from 'react';
 import { useState, useCallback } from 'react';
-import { Upload, X, Loader2, FileText, File } from 'lucide-react';
+import { Upload, X, Loader2, FileText, File, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from './Button';
+import { ImageCropper } from './ImageCropper';
 
 interface FileUploadProps {
   value?: string;
@@ -201,7 +202,7 @@ export function FileUpload({
   );
 }
 
-// Image Upload Component
+// Image Upload Component with optional crop support
 interface ImageUploadProps {
   value?: string;
   onChange: (url: string | null) => void;
@@ -210,6 +211,8 @@ interface ImageUploadProps {
   maxSize?: number;
   aspectRatio?: 'square' | 'banner' | 'auto';
   disabled?: boolean;
+  enableCrop?: boolean; // Enable 1:1 crop for logos
+  outputSize?: number; // Output size in pixels (default: 512 for square, 1200 for banner)
 }
 
 export function ImageUpload({
@@ -220,30 +223,28 @@ export function ImageUpload({
   maxSize = 5,
   aspectRatio = 'auto',
   disabled = false,
+  enableCrop = false,
+  outputSize,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
-  const handleFile = async (file: File) => {
-    setError(null);
+  // Determine output size based on aspect ratio
+  const getOutputSize = () => {
+    if (outputSize) return outputSize;
+    return aspectRatio === 'square' ? 512 : aspectRatio === 'banner' ? 1200 : 800;
+  };
 
-    if (!file.type.startsWith('image/')) {
-      setError('فقط فایل تصویری مجاز است');
-      return;
-    }
-
-    if (file.size > maxSize * 1024 * 1024) {
-      setError(`حداکثر حجم تصویر ${maxSize} مگابایت است`);
-      return;
-    }
-
+  const uploadImage = useCallback(async (fileOrBlob: File | Blob) => {
     setIsUploading(true);
+    setError(null);
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'image');
+      formData.append('file', fileOrBlob);
+      formData.append('type', aspectRatio === 'square' ? 'company_logo' : 'cover_image');
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -262,9 +263,41 @@ export function ImageUpload({
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [aspectRatio, onChange]);
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleFile = useCallback(async (file: File) => {
+    setError(null);
+
+    if (!file.type.startsWith('image/')) {
+      setError('فقط فایل تصویری مجاز است');
+      return;
+    }
+
+    if (file.size > maxSize * 1024 * 1024) {
+      setError(`حداکثر حجم تصویر ${maxSize} مگابایت است`);
+      return;
+    }
+
+    // If crop is enabled for square images, show cropper
+    if (enableCrop && aspectRatio === 'square') {
+      setCropFile(file);
+      return;
+    }
+
+    // Otherwise upload directly
+    await uploadImage(file);
+  }, [maxSize, enableCrop, aspectRatio, uploadImage]);
+
+  const handleCrop = useCallback(async (croppedBlob: Blob) => {
+    setCropFile(null);
+    await uploadImage(croppedBlob);
+  }, [uploadImage]);
+
+  const handleCropCancel = useCallback(() => {
+    setCropFile(null);
+  }, []);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -272,9 +305,9 @@ export function ImageUpload({
     } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -282,83 +315,104 @@ export function ImageUpload({
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
-  };
+  }, [handleFile]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
     }
-  };
+  }, [handleFile]);
 
   const heightClass = aspectRatio === 'banner' ? 'h-48' : aspectRatio === 'square' ? 'h-40' : 'h-32';
 
   return (
-    <div className={className}>
-      {label && (
-        <label className="block text-sm font-medium text-foreground mb-2">
-          {label}
-        </label>
-      )}
+    <>
+      <div className={className}>
+        {label && (
+          <label className="block text-sm font-medium text-foreground mb-2">
+            {label}
+          </label>
+        )}
 
-      {value ? (
-        <div className={cn('relative rounded-xl overflow-hidden', heightClass)}>
-          <img src={value} alt="Uploaded" className="w-full h-full object-cover" />
-          {!disabled && (
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              className="absolute top-2 left-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      ) : (
-        <label
-          className={cn(
-            'relative block border-2 border-dashed rounded-xl transition-colors',
-            heightClass,
-            dragActive ? 'border-primary bg-primary/5' : 'border-border',
-            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50',
-          )}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleChange}
-            disabled={disabled || isUploading}
-            className="sr-only"
-          />
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            {isUploading ? (
-              <>
-                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                <span className="text-sm text-muted-foreground">در حال آپلود...</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">
-                  تصویر را بکشید یا کلیک کنید
-                </span>
-                <span className="text-xs text-muted-foreground mt-1">
-                  حداکثر {maxSize} مگابایت
-                </span>
-              </>
+        {value ? (
+          <div className={cn('relative rounded-xl overflow-hidden', heightClass)}>
+            <img src={value} alt="Uploaded" className="w-full h-full object-cover" />
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => onChange(null)}
+                className="absolute top-2 left-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
           </div>
-        </label>
-      )}
+        ) : (
+          <label
+            className={cn(
+              'relative block border-2 border-dashed rounded-xl transition-colors',
+              heightClass,
+              dragActive ? 'border-primary bg-primary/5' : 'border-border',
+              disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50',
+            )}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              onChange={handleChange}
+              disabled={disabled || isUploading}
+              className="sr-only"
+            />
 
-      {error && (
-        <p className="mt-2 text-sm text-destructive">{error}</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                  <span className="text-sm text-muted-foreground">در حال آپلود...</span>
+                </>
+              ) : (
+                <>
+                  {aspectRatio === 'square' ? (
+                    <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
+                  ) : (
+                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    تصویر را بکشید یا کلیک کنید
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    JPG, PNG, HEIC - حداکثر {maxSize} مگابایت
+                  </span>
+                  {enableCrop && aspectRatio === 'square' && (
+                    <span className="text-xs text-primary mt-1">
+                      تصویر به صورت مربعی برش داده می‌شود
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </label>
+        )}
+
+        {error && (
+          <p className="mt-2 text-sm text-destructive">{error}</p>
+        )}
+      </div>
+
+      {/* Image Cropper Modal */}
+      {cropFile && (
+        <ImageCropper
+          imageFile={cropFile}
+          onCrop={handleCrop}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
       )}
-    </div>
+    </>
   );
 }
 

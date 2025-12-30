@@ -426,7 +426,8 @@ export function CompanyForm({ initialData, companyId, mode = 'create' }: Company
               onChange={(url) => updateFormData({ logo_url: url || '' })}
               label="لوگوی شرکت"
               aspectRatio="square"
-              maxSize={2}
+              maxSize={5}
+              enableCrop={true}
             />
 
             {/* Cover Image */}
