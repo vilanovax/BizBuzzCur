@@ -72,7 +72,8 @@ export async function GET(
         p.personality_signals
       FROM profiles p
       WHERE p.user_id = ${userId}
-        AND p.is_primary = true
+        AND p.is_active = true
+      ORDER BY p.created_at ASC
       LIMIT 1
     `;
 

@@ -79,7 +79,13 @@ export async function GET(
       FROM job_applications ja
       JOIN job_ads j ON j.id = ja.job_id
       JOIN companies c ON c.id = j.company_id
-      LEFT JOIN profiles p ON p.user_id = ja.applicant_id AND p.is_primary = true
+      LEFT JOIN LATERAL (
+        SELECT personality_signals, skills
+        FROM profiles
+        WHERE user_id = ja.applicant_id AND is_active = true
+        ORDER BY created_at ASC
+        LIMIT 1
+      ) p ON true
       WHERE ja.id = ${applicationId} AND ja.job_id = ${jobId}
     `;
 

@@ -87,7 +87,13 @@ export async function GET(
         p.personality_signals
       FROM company_team_members ctm
       LEFT JOIN company_departments cd ON cd.id = ctm.department_id
-      LEFT JOIN profiles p ON p.user_id = ctm.user_id AND p.is_primary = true
+      LEFT JOIN LATERAL (
+        SELECT personality_signals
+        FROM profiles
+        WHERE user_id = ctm.user_id AND is_active = true
+        ORDER BY created_at ASC
+        LIMIT 1
+      ) p ON true
       WHERE ctm.company_id = ${companyId}
         AND ctm.invitation_status = 'accepted'
         AND p.personality_signals IS NOT NULL

@@ -79,7 +79,13 @@ export async function GET(
       FROM job_applications ja
       JOIN job_ads j ON j.id = ja.job_id
       JOIN companies c ON c.id = j.company_id
-      LEFT JOIN profiles p ON p.user_id = ja.applicant_id AND p.is_primary = true
+      LEFT JOIN LATERAL (
+        SELECT personality_signals
+        FROM profiles
+        WHERE user_id = ja.applicant_id AND is_active = true
+        ORDER BY created_at ASC
+        LIMIT 1
+      ) p ON true
       WHERE ja.id = ${applicationId} AND ja.job_id = ${jobId}
     `;
 
@@ -98,7 +104,13 @@ export async function GET(
         ctm.role,
         p.personality_signals
       FROM company_team_members ctm
-      JOIN profiles p ON p.user_id = ctm.user_id AND p.is_primary = true
+      JOIN LATERAL (
+        SELECT personality_signals
+        FROM profiles
+        WHERE user_id = ctm.user_id AND is_active = true
+        ORDER BY created_at ASC
+        LIMIT 1
+      ) p ON true
       WHERE ctm.company_id = ${application.company_id}
         AND ctm.invitation_status = 'accepted'
         AND p.personality_signals IS NOT NULL

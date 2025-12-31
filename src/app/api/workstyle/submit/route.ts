@@ -62,10 +62,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's primary profile
+    // Get user's first active profile
     const [profile] = await sql<{ id: string }[]>`
       SELECT id FROM profiles
-      WHERE user_id = ${user.id} AND is_primary = true
+      WHERE user_id = ${user.id} AND is_active = true
+      ORDER BY created_at ASC
       LIMIT 1
     `;
 

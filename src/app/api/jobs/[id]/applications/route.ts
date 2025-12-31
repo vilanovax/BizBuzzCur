@@ -57,7 +57,7 @@ export async function GET(
         u.last_name as applicant_last_name,
         u.email as applicant_email,
         u.avatar_url as applicant_avatar,
-        -- Get primary profile info
+        -- Get first active profile info
         p.id as profile_id,
         p.title as profile_title,
         p.tagline as profile_tagline,
@@ -68,7 +68,13 @@ export async function GET(
       FROM job_applications ja
       JOIN users u ON u.id = ja.applicant_id
       JOIN job_ads j ON j.id = ja.job_id
-      LEFT JOIN profiles p ON p.user_id = u.id AND p.is_primary = true
+      LEFT JOIN LATERAL (
+        SELECT id, title, tagline, city, country
+        FROM profiles
+        WHERE user_id = u.id AND is_active = true
+        ORDER BY created_at ASC
+        LIMIT 1
+      ) p ON true
       WHERE ja.job_id = ${jobId}
       ${statusFilter}
       ORDER BY ja.applied_at DESC

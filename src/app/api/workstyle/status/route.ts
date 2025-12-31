@@ -18,14 +18,16 @@ export async function GET() {
       );
     }
 
-    // Check if user's primary profile has personality signals
+    // Check if user's first active profile has personality signals
     const [profile] = await sql`
       SELECT
         personality_signals IS NOT NULL
         AND jsonb_array_length(personality_signals) > 0 as has_signals
       FROM profiles
       WHERE user_id = ${user.id}
-        AND is_primary = true
+        AND is_active = true
+      ORDER BY created_at ASC
+      LIMIT 1
     `;
 
     return NextResponse.json({
