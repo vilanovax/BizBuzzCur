@@ -7,6 +7,12 @@ export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internshi
 // Location Types
 export type LocationType = 'onsite' | 'remote' | 'hybrid';
 
+// Team Context (Quick Job)
+export type TeamContext = 'solo' | 'small_team' | 'cross_functional';
+
+// Apply Method (Quick Job)
+export type ApplyMethod = 'bizbuzz' | 'external_link';
+
 // Experience Levels
 export type ExperienceLevel = 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'manager';
 
@@ -30,6 +36,28 @@ export interface SalaryRange {
   is_negotiable?: boolean;
 }
 
+// Workstyle Expectations (Professional Job Phase 2)
+export interface WorkstyleExpectations {
+  autonomy?: number; // 1-5
+  collaboration?: number; // 1-5
+  pace?: number; // 1-5 (slow to fast)
+  structure?: number; // 1-5 (flexible to structured)
+}
+
+// Team Snapshot (Professional Job Phase 2)
+export interface TeamSnapshot {
+  team_size?: number;
+  works_with?: string[]; // e.g., ["Product Manager", "Backend Engineer"]
+  reports_to?: string;
+}
+
+// Hiring Preferences (Internal Only, Professional Job Phase 2)
+export interface HiringPreferences {
+  decision_speed?: 'fast' | 'careful';
+  remote_openness?: number; // 1-5
+  target_days_to_hire?: number;
+}
+
 // Job Ad
 export interface JobAd {
   id: string;
@@ -46,10 +74,22 @@ export interface JobAd {
   location?: string | null;
   salary_range?: SalaryRange | null;
 
+  // Quick Job Fields
+  role_summary?: string | null;
+  team_context?: TeamContext | null;
+  apply_method?: ApplyMethod | null;
+  external_apply_url?: string | null;
+
   // Requirements
   experience_level?: ExperienceLevel | null;
   required_skills: string[];
   preferred_skills: string[];
+
+  // Professional Job Fields (Phase 2)
+  workstyle_expectations?: WorkstyleExpectations | null;
+  team_snapshot?: TeamSnapshot | null;
+  hiring_preferences?: HiringPreferences | null;
+  skill_importance?: Record<string, 'low' | 'medium' | 'high'> | null;
 
   // Taxonomy
   domain_id?: string | null;
@@ -155,12 +195,36 @@ export interface CreateJobRequest {
   location_type?: LocationType;
   location?: string;
   salary_range?: SalaryRange;
+  // Quick Job Fields
+  role_summary?: string;
+  team_context?: TeamContext;
+  apply_method?: ApplyMethod;
+  external_apply_url?: string;
+  // Requirements
   experience_level?: ExperienceLevel;
   required_skills?: string[];
   preferred_skills?: string[];
+  // Professional Job Fields
+  workstyle_expectations?: WorkstyleExpectations;
+  team_snapshot?: TeamSnapshot;
+  hiring_preferences?: HiringPreferences;
+  skill_importance?: Record<string, 'low' | 'medium' | 'high'>;
+  // Taxonomy
   domain_id?: string;
   specialization_id?: string;
   event_id?: string;
+}
+
+// Quick Job Request (minimal fields for fast publishing)
+export interface QuickJobRequest {
+  company_id: string;
+  title: string;
+  role_summary: string;
+  domain_id?: string;
+  location_type: LocationType;
+  team_context: TeamContext;
+  apply_method?: ApplyMethod;
+  external_apply_url?: string;
 }
 
 // Update Job Request
@@ -231,4 +295,83 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   paused: 'متوقف شده',
   closed: 'بسته شده',
   filled: 'پر شده',
+};
+
+// Team Context Labels (Persian)
+export const TEAM_CONTEXT_LABELS: Record<TeamContext, string> = {
+  solo: 'کار فردی',
+  small_team: 'تیم کوچک',
+  cross_functional: 'تیم چند تخصصی',
+};
+
+// Team Context Descriptions (Persian)
+export const TEAM_CONTEXT_DESCRIPTIONS: Record<TeamContext, string> = {
+  solo: 'مستقل و بدون تیم ثابت',
+  small_team: 'همکاری نزدیک با ۲-۵ نفر',
+  cross_functional: 'کار با تیم‌های مختلف',
+};
+
+// Apply Method Labels (Persian)
+export const APPLY_METHOD_LABELS: Record<ApplyMethod, string> = {
+  bizbuzz: 'درخواست در بیزباز',
+  external_link: 'لینک خارجی',
+};
+
+// Quick Job Microcopy (Persian)
+export const QUICK_JOB_COPY = {
+  entry: {
+    title: 'ایجاد آگهی برای این نقش',
+    subtitle: 'ساده شروع کن. بعداً می‌تونی جزئیات بیشتری اضافه کنی.',
+  },
+  step1: {
+    title: 'اطلاعات نقش',
+    subtitle: 'چه کسی رو دنبال می‌کنید؟',
+  },
+  step2: {
+    title: 'روش درخواست',
+    subtitle: 'متقاضیان چطور درخواست بدن؟',
+  },
+  fields: {
+    title: {
+      label: 'عنوان شغل',
+      placeholder: 'مثال: طراح UI/UX',
+    },
+    role_summary: {
+      label: 'توضیح کوتاه نقش',
+      placeholder: 'این نقش چه مشکلی رو حل می‌کنه؟',
+      helper: '۲-۳ جمله کافیه',
+    },
+    domain: {
+      label: 'حوزه تخصصی',
+      placeholder: 'انتخاب حوزه',
+    },
+    location_type: {
+      label: 'نوع حضور',
+    },
+    team_context: {
+      label: 'محیط کاری',
+    },
+    apply_method: {
+      bizbuzz: {
+        title: 'درخواست در بیزباز',
+        description: 'متقاضیان مستقیم در پلتفرم درخواست می‌دهند',
+      },
+      external: {
+        title: 'لینک خارجی',
+        description: 'هدایت به سایت یا فرم دیگر',
+        placeholder: 'آدرس صفحه درخواست',
+      },
+    },
+  },
+  publish: {
+    cta: 'انتشار آگهی',
+    draft: 'ذخیره پیش‌نویس',
+    helper: 'این اطلاعات برای شروع دریافت درخواست‌ها کافیه.',
+  },
+  success: {
+    title: 'آگهی منتشر شد! 🎉',
+    subtitle: 'آگهی شما الان قابل مشاهده و درخواست است.',
+    improve: 'می‌خوای درخواست‌های بهتری بگیری؟',
+    improveAction: 'بهبود آگهی',
+  },
 };

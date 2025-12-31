@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: CreateJobRequest = await request.json();
+    const body: CreateJobRequest & { status?: string } = await request.json();
     const {
       company_id,
       department_id,
@@ -38,12 +38,26 @@ export async function POST(request: NextRequest) {
       location_type,
       location,
       salary_range,
+      // Quick Job Fields
+      role_summary,
+      team_context,
+      apply_method,
+      external_apply_url,
+      // Requirements
       experience_level,
       required_skills,
       preferred_skills,
+      // Professional Job Fields
+      workstyle_expectations,
+      team_snapshot,
+      hiring_preferences,
+      skill_importance,
+      // Taxonomy
       domain_id,
       specialization_id,
       event_id,
+      // Status override (for quick publish)
+      status: requestedStatus,
     } = body;
 
     // Validate required fields
@@ -70,6 +84,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine status and published_at
+    const finalStatus = requestedStatus === 'published' ? 'published' : 'draft';
+    const publishedAt = finalStatus === 'published' ? new Date().toISOString() : null;
+
     // Create job ad
     const [job] = await sql`
       INSERT INTO job_ads (
@@ -83,13 +101,22 @@ export async function POST(request: NextRequest) {
         location_type,
         location,
         salary_range,
+        role_summary,
+        team_context,
+        apply_method,
+        external_apply_url,
         experience_level,
         required_skills,
         preferred_skills,
+        workstyle_expectations,
+        team_snapshot,
+        hiring_preferences,
+        skill_importance,
         domain_id,
         specialization_id,
         event_id,
-        status
+        status,
+        published_at
       )
       VALUES (
         ${company_id},
@@ -102,13 +129,22 @@ export async function POST(request: NextRequest) {
         ${location_type || null},
         ${location || null},
         ${salary_range ? JSON.stringify(salary_range) : null},
+        ${role_summary || null},
+        ${team_context || null},
+        ${apply_method || 'bizbuzz'},
+        ${external_apply_url || null},
         ${experience_level || null},
         ${required_skills || []},
         ${preferred_skills || []},
+        ${workstyle_expectations ? JSON.stringify(workstyle_expectations) : null},
+        ${team_snapshot ? JSON.stringify(team_snapshot) : null},
+        ${hiring_preferences ? JSON.stringify(hiring_preferences) : null},
+        ${skill_importance ? JSON.stringify(skill_importance) : null},
         ${domain_id || null},
         ${specialization_id || null},
         ${event_id || null},
-        'draft'
+        ${finalStatus},
+        ${publishedAt}
       )
       RETURNING *
     `;

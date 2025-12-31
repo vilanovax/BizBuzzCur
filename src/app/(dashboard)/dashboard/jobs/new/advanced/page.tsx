@@ -2,11 +2,11 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Loader2, Settings2 } from 'lucide-react';
+import { ArrowRight, Loader2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { QuickJobForm } from '@/components/jobs/QuickJobForm';
+import { JobForm } from '@/components/jobs/JobForm';
 
-function CreateJobContent() {
+function AdvancedJobContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -18,27 +18,27 @@ function CreateJobContent() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">آگهی استخدام جدید</h1>
+            <h1 className="text-2xl font-bold">آگهی استخدام پیشرفته</h1>
             <p className="text-muted-foreground mt-1">
-              ساده شروع کن، بعداً تکمیل کن
+              فرم کامل با جزئیات بیشتر
             </p>
           </div>
         </div>
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-          <Link href="/dashboard/jobs/new/advanced">
-            <Settings2 className="w-4 h-4 ml-2" />
-            فرم پیشرفته
+          <Link href="/dashboard/jobs/new">
+            <Zap className="w-4 h-4 ml-2" />
+            فرم سریع
           </Link>
         </Button>
       </div>
 
-      {/* Quick Job Form */}
-      <QuickJobForm />
+      {/* Advanced Form */}
+      <JobForm mode="create" />
     </div>
   );
 }
 
-export default function CreateJobPage() {
+export default function AdvancedJobPage() {
   return (
     <Suspense
       fallback={
@@ -47,7 +47,7 @@ export default function CreateJobPage() {
         </div>
       }
     >
-      <CreateJobContent />
+      <AdvancedJobContent />
     </Suspense>
   );
 }
