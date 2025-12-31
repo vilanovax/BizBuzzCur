@@ -56,14 +56,20 @@ export function SpecializationSelector({
 
   return (
     <div className="space-y-3">
-      {/* Selection counter */}
+      {/* Selection counter - Less threatening format */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
-          {selectedIds.length} از {maxSelections} انتخاب شده
+          {selectedIds.length > 0 ? (
+            <>
+              <span className="text-foreground font-medium">{selectedIds.length}</span> تخصص انتخاب شده
+            </>
+          ) : (
+            <>تا {maxSelections} تخصص (اختیاری)</>
+          )}
         </span>
         {!canSelectMore && (
-          <span className="text-amber-600">
-            حداکثر تعداد انتخاب
+          <span className="text-amber-600 text-xs">
+            حداکثر انتخاب
           </span>
         )}
       </div>

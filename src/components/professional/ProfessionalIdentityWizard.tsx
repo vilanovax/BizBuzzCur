@@ -241,7 +241,18 @@ export function ProfessionalIdentityWizard({
   };
 
   return (
-    <div className={cn('space-y-8', className)}>
+    <div className={cn('space-y-6', className)}>
+      {/* Value Reminder Banner - Why this matters */}
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          این اطلاعات برای{' '}
+          <span className="text-foreground font-medium">پیشنهاد فرصت‌های شغلی</span>،{' '}
+          <span className="text-foreground font-medium">نمایش مناسب در رویدادها</span> و{' '}
+          <span className="text-foreground font-medium">شبکه‌سازی حرفه‌ای</span>{' '}
+          استفاده می‌شود
+        </p>
+      </div>
+
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-2">
         {STEPS.map((step, index) => (
@@ -287,6 +298,13 @@ export function ProfessionalIdentityWizard({
           {currentStep === 'specialization' && 'تخصص‌های خود را انتخاب کنید'}
           {currentStep === 'skills' && 'مهارت‌های خود را اضافه کنید'}
           {currentStep === 'status' && 'وضعیت شغلی خود را مشخص کنید'}
+        </p>
+        {/* Microcopy per step */}
+        <p className="text-xs text-muted-foreground/70 mt-2">
+          {currentStep === 'domain' && 'این انتخاب پایه‌ی پیشنهاد فرصت‌های شغلی و رویدادهاست'}
+          {currentStep === 'specialization' && 'بعداً می‌توانید تخصص‌ها را ویرایش کنید'}
+          {currentStep === 'skills' && '۳ تا ۷ مهارت اصلی کافی است • بعداً قابل افزودن است'}
+          {currentStep === 'status' && 'یک گزینه انتخاب کنید که بهترین وضعیت فعلی شماست'}
         </p>
       </div>
 
@@ -355,7 +373,7 @@ export function ProfessionalIdentityWizard({
   );
 }
 
-// Status Selector Component (inline for simplicity)
+// Status Selector Component - Improved UX with clearer grouping
 function StatusSelector({
   statuses,
   selectedId,
@@ -377,50 +395,75 @@ function StatusSelector({
     return groups;
   }, [statuses]);
 
-  const typeLabels: Record<string, string> = {
-    availability: 'در دسترس بودن',
-    seeking: 'جستجو',
-    offering: 'ارائه',
+  // Improved labels with clearer context
+  const typeLabels: Record<string, { title: string; subtitle: string }> = {
+    availability: {
+      title: 'الان آماده‌ام برای:',
+      subtitle: 'وضعیت فعلی شما چیست؟',
+    },
+    seeking: {
+      title: 'دنبال چه چیزی هستم:',
+      subtitle: 'به چه نوع فرصتی علاقه‌مندید؟',
+    },
+    offering: {
+      title: 'چه چیزی ارائه می‌دهم:',
+      subtitle: 'چه خدماتی دارید؟',
+    },
   };
+
+  // Order of display
+  const typeOrder = ['availability', 'seeking', 'offering'];
 
   return (
     <div className="space-y-6">
-      {Object.entries(groupedStatuses).map(([type, typeStatuses]) => (
-        <div key={type}>
-          <h3 className="font-medium mb-3">{typeLabels[type] || type}</h3>
-          <div className="flex flex-wrap gap-2">
-            {typeStatuses.map((status) => (
-              <button
-                key={status.id}
-                type="button"
-                onClick={() => onSelect(status.id)}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all',
-                  selectedId === status.id
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-muted hover:bg-muted/80 text-foreground'
-                )}
-                style={{
-                  backgroundColor:
-                    selectedId === status.id && status.color
-                      ? status.color
-                      : undefined,
-                }}
-              >
-                {status.icon && (
-                  <DynamicIcon
-                    name={status.icon}
-                    className="h-4 w-4"
-                    size={16}
-                    fallback="emoji"
-                  />
-                )}
-                <span>{status.name_fa}</span>
-              </button>
-            ))}
+      {typeOrder.map((type) => {
+        const typeStatuses = groupedStatuses[type];
+        if (!typeStatuses || typeStatuses.length === 0) return null;
+
+        const label = typeLabels[type] || { title: type, subtitle: '' };
+
+        return (
+          <div key={type} className="space-y-3">
+            <div>
+              <h3 className="font-medium text-foreground">{label.title}</h3>
+              {label.subtitle && (
+                <p className="text-xs text-muted-foreground">{label.subtitle}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {typeStatuses.map((status) => (
+                <button
+                  key={status.id}
+                  type="button"
+                  onClick={() => onSelect(status.id)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all',
+                    selectedId === status.id
+                      ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30'
+                      : 'bg-muted hover:bg-muted/80 text-foreground'
+                  )}
+                  style={{
+                    backgroundColor:
+                      selectedId === status.id && status.color
+                        ? status.color
+                        : undefined,
+                  }}
+                >
+                  {status.icon && (
+                    <DynamicIcon
+                      name={status.icon}
+                      className="h-4 w-4"
+                      size={16}
+                      fallback="emoji"
+                    />
+                  )}
+                  <span>{status.name_fa}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {statuses.length === 0 && (
         <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
@@ -428,14 +471,14 @@ function StatusSelector({
         </div>
       )}
 
-      {/* Skip option */}
-      <div className="text-center">
+      {/* Skip option - more subtle */}
+      <div className="text-center pt-2">
         <button
           type="button"
           onClick={() => onSelect('')}
-          className="text-sm text-muted-foreground hover:text-foreground underline"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
-          فعلاً رد شوید
+          فعلاً رد شوید (اختیاری)
         </button>
       </div>
     </div>

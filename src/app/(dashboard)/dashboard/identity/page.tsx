@@ -2,22 +2,22 @@
 
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, Edit2, X } from 'lucide-react';
-import { DynamicIcon, getIconEmoji } from '@/lib/utils/icons';
+import { Loader2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { cn } from '@/lib/utils/cn';
+import { Card, CardContent } from '@/components/ui/Card';
+import {
+  IdentitySummaryCard,
+  VisibilitySection,
+  IdentityHealthCard,
+  CollapsibleDetailsSection,
+} from '@/components/dashboard/identity';
 import {
   ProfessionalIdentityWizard,
   type ProfessionalIdentityData,
 } from '@/components/professional';
 import {
-  SKILL_LEVELS,
-  SKILL_CATEGORIES,
   type UserProfessionalProfile,
   type SkillLevel,
-  type SkillCategory,
   type ProfessionalDomain,
   type Skill,
 } from '@/types/professional';
@@ -32,7 +32,6 @@ import {
 } from '@/lib/analytics';
 
 export default function ProfessionalIdentityPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfessionalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -239,7 +238,19 @@ export default function ProfessionalIdentityPage() {
     );
   }
 
-  // Show current profile
+  // No profile yet - shouldn't happen but handle it
+  if (!profile) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">خطا در بارگذاری پروفایل</p>
+        <Button className="mt-4" onClick={() => setShowWizard(true)}>
+          شروع تنظیم هویت
+        </Button>
+      </div>
+    );
+  }
+
+  // Main Overview Layout
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -247,7 +258,7 @@ export default function ProfessionalIdentityPage() {
         <div>
           <h1 className="text-2xl font-bold">هویت حرفه‌ای</h1>
           <p className="text-muted-foreground mt-1">
-            مدیریت اطلاعات حرفه‌ای شما
+            نمای کلی از هویت حرفه‌ای شما
           </p>
         </div>
         <Button onClick={() => setShowWizard(true)}>
@@ -262,145 +273,32 @@ export default function ProfessionalIdentityPage() {
         </div>
       )}
 
-      {/* Domain */}
-      <Card>
-        <CardHeader>
-          <CardTitle>حوزه تخصصی</CardTitle>
-          <CardDescription>حوزه اصلی فعالیت حرفه‌ای شما</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {profile?.primaryDomain ? (
-            <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-                style={{
-                  backgroundColor: profile.primaryDomain.domain?.color || '#e5e7eb',
-                }}
-              >
-                {getIconEmoji(profile.primaryDomain.domain?.icon || '')}
-              </div>
-              <div>
-                <p className="font-medium">{profile.primaryDomain.domain?.name_fa}</p>
-                <p className="text-sm text-muted-foreground">
-                  {profile.primaryDomain.domain?.name_en}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">حوزه‌ای انتخاب نشده</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Summary Card - Top priority */}
+      <IdentitySummaryCard profile={profile} />
 
-      {/* Specializations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>تخصص‌ها</CardTitle>
-          <CardDescription>تخصص‌های شما در حوزه انتخابی</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {profile?.specializations && profile.specializations.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {profile.specializations.map((spec) => (
-                <span
-                  key={spec.id}
-                  className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium"
-                >
-                  {spec.specialization?.name_fa}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">تخصصی انتخاب نشده</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Two Column Layout */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Column - 2/3 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Visibility Section */}
+          <VisibilitySection profile={profile} />
 
-      {/* Skills */}
-      <Card>
-        <CardHeader>
-          <CardTitle>مهارت‌ها</CardTitle>
-          <CardDescription>مهارت‌های حرفه‌ای شما</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {profile?.skills && profile.skills.length > 0 ? (
-            <div className="space-y-3">
-              {profile.skills.map((userSkill) => (
-                <div
-                  key={userSkill.id}
-                  className="flex items-center justify-between p-3 rounded-xl border"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-xs font-medium',
-                        'bg-muted text-muted-foreground'
-                      )}
-                    >
-                      {SKILL_CATEGORIES[userSkill.skill?.category as SkillCategory]?.labelFa}
-                    </span>
-                    <div>
-                      <p className="font-medium">{userSkill.skill?.name_fa}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {userSkill.skill?.name_en}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        'px-3 py-1 rounded-full text-xs font-medium',
-                        'bg-primary/10 text-primary'
-                      )}
-                    >
-                      {SKILL_LEVELS[userSkill.level as SkillLevel]?.labelFa}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveSkill(userSkill.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">مهارتی ثبت نشده</p>
-          )}
-        </CardContent>
-      </Card>
+          {/* Collapsible Details */}
+          <CollapsibleDetailsSection
+            profile={profile}
+            onRemoveSkill={handleRemoveSkill}
+          />
+        </div>
 
-      {/* Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>وضعیت شغلی</CardTitle>
-          <CardDescription>وضعیت فعلی شما</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {profile?.status ? (
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
-              style={{
-                backgroundColor: profile.status.status?.color || '#e5e7eb',
-                color: '#fff',
-              }}
-            >
-              {profile.status.status?.icon && (
-                <DynamicIcon
-                  name={profile.status.status.icon}
-                  className="h-4 w-4"
-                  size={16}
-                  fallback="emoji"
-                />
-              )}
-              <span>{profile.status.status?.name_fa}</span>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">وضعیتی انتخاب نشده</p>
-          )}
-        </CardContent>
-      </Card>
+        {/* Sidebar - 1/3 */}
+        <div className="space-y-6">
+          {/* Identity Health */}
+          <IdentityHealthCard
+            profile={profile}
+            onEditClick={() => setShowWizard(true)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
