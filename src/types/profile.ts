@@ -1,5 +1,175 @@
 export type ProfileType = 'business_card' | 'resume' | 'event' | 'company';
 
+/**
+ * Quick Profile Intent
+ *
+ * User-selected purpose for creating a profile.
+ * Each intent maps to default settings (visibility, CTA, layout).
+ */
+export type ProfileIntent =
+  | 'networking'    // شبکه‌سازی - for events and meetups
+  | 'job'           // شغلی - for job applications
+  | 'freelance'     // فریلنس / مشاوره - for consulting/projects
+  | 'business'      // معرفی کسب‌وکار - for formal business intro
+  | 'simple';       // لینک ساده - minimal contact sharing
+
+/**
+ * Intent configuration with defaults and copy
+ */
+export interface IntentConfig {
+  id: ProfileIntent;
+  icon: string;
+  title: string;
+  description: string;
+  defaults: {
+    profile_type: ProfileType;
+    visibility: ProfileVisibility;
+    cta_type: CTAType;
+    template_id: TemplateId;
+  };
+}
+
+/**
+ * Intent configurations (Persian)
+ */
+export const PROFILE_INTENTS: Record<ProfileIntent, IntentConfig> = {
+  networking: {
+    id: 'networking',
+    icon: '👋',
+    title: 'شبکه‌سازی',
+    description: 'برای معرفی سریع در رویدادها و آشنایی‌ها',
+    defaults: {
+      profile_type: 'business_card',
+      visibility: 'public',
+      cta_type: 'connect',
+      template_id: 'event_networking',
+    },
+  },
+  job: {
+    id: 'job',
+    icon: '💼',
+    title: 'شغلی',
+    description: 'برای ارسال به کارفرما یا فرصت‌های شغلی',
+    defaults: {
+      profile_type: 'resume',
+      visibility: 'public',
+      cta_type: 'message',
+      template_id: 'resume_job',
+    },
+  },
+  freelance: {
+    id: 'freelance',
+    icon: '🧑‍💻',
+    title: 'فریلنس / مشاوره',
+    description: 'برای معرفی تخصص و دریافت پروژه',
+    defaults: {
+      profile_type: 'business_card',
+      visibility: 'public',
+      cta_type: 'message',
+      template_id: 'freelance_consulting',
+    },
+  },
+  business: {
+    id: 'business',
+    icon: '🏢',
+    title: 'معرفی کسب‌وکار',
+    description: 'برای معرفی خودت یا تیمت به‌صورت رسمی',
+    defaults: {
+      profile_type: 'company',
+      visibility: 'public',
+      cta_type: 'visit_website',
+      template_id: 'company_intro',
+    },
+  },
+  simple: {
+    id: 'simple',
+    icon: '⚡',
+    title: 'لینک ساده',
+    description: 'فقط یک معرفی کوتاه با راه ارتباطی',
+    defaults: {
+      profile_type: 'business_card',
+      visibility: 'public',
+      cta_type: 'message',
+      template_id: 'business_card_work',
+    },
+  },
+};
+
+/**
+ * Quick Profile Creation Input
+ */
+export interface QuickProfileInput {
+  intent: ProfileIntent;
+  display_name: string;
+  headline: string;
+  contact: string;        // Email, phone, or URL
+  contact_type: 'email' | 'phone' | 'link';
+  photo_url?: string;
+}
+
+/**
+ * Quick Profile Copy (Persian)
+ */
+export const QUICK_PROFILE_COPY = {
+  // Entry screen
+  entry: {
+    title: 'یک پروفایل سریع بساز',
+    subtitle: 'برای هر موقعیت، یک معرفی مناسب',
+    helper: 'این نسخه سریع است — هر وقت خواستی می‌تونی حرفه‌ای‌ترش کنی.',
+    cta: 'شروع',
+  },
+
+  // Step 1 - Intent
+  intent: {
+    title: 'این پروفایل رو برای چی می‌سازی؟',
+    subtitle: 'ما بر اساس انتخابت، بهترین قالب رو آماده می‌کنیم.',
+    footer: 'بعداً می‌تونی این پروفایل رو کپی یا تغییر بدی.',
+  },
+
+  // Step 2 - Info
+  info: {
+    title: 'اطلاعات پایه',
+    subtitle: 'فقط چیزهایی که واقعاً لازم هست.',
+    fields: {
+      name: {
+        label: 'نام نمایشی',
+        placeholder: 'مثلاً: علی رضایی',
+      },
+      headline: {
+        label: 'عنوان کوتاه',
+        placeholder: 'مثلاً: توسعه‌دهنده بک‌اند | Node.js',
+        helper: 'یک خط کافیه — لازم نیست کامل باشه.',
+      },
+      contact: {
+        label: 'راه ارتباطی',
+        placeholder: 'ایمیل، شماره یا لینک',
+        helper: 'فقط یکی کافیه.',
+      },
+      photo: {
+        label: 'تصویر پروفایل (اختیاری)',
+        helper: 'می‌تونی بعداً اضافه کنی.',
+      },
+    },
+    cta: 'ساخت پروفایل',
+  },
+
+  // Success screen
+  success: {
+    title: 'پروفایلت آماده‌ست 🎉',
+    subtitle: 'می‌تونی همین الان به اشتراک بذاری.',
+    shareCta: 'اشتراک‌گذاری پروفایل',
+    qrCta: 'دریافت QR Code',
+    upgradeCta: 'حرفه‌ای‌ترش کن',
+    upgradeHelper: 'افزودن مهارت‌ها، توضیحات و لینک‌ها — هر وقت خواستی.',
+  },
+
+  // Persistent helpers
+  helpers: {
+    banner: 'این نسخه‌ی سریع پروفایله. هیچ چیز دائمی نیست.',
+    editTooltip: 'می‌تونی هر بخش رو بعداً تغییر بدی.',
+  },
+};
+
 export type ProfileVisibility = 'public' | 'connections' | 'private' | 'event_only';
 export type PhoneVisibility = 'full' | 'masked' | 'after_connect' | 'hidden';
 export type EmailVisibility = 'full' | 'masked' | 'after_connect' | 'hidden';

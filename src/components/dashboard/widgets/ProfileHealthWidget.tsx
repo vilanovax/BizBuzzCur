@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ChevronLeft,
   Plus,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -42,12 +43,19 @@ export function ProfileHealthWidget({
             <p className="text-sm text-muted-foreground mb-4">
               کارت ویزیت دیجیتال شما آماده نیست
             </p>
-            <Button asChild>
-              <Link href="/dashboard/profiles/new">
-                <Plus className="h-4 w-4 ml-2" />
-                ایجاد پروفایل
-              </Link>
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button asChild>
+                <Link href="/dashboard/profiles/quick">
+                  <Zap className="h-4 w-4 ml-2" />
+                  ساخت سریع (۳ دقیقه)
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/profiles/new" className="text-muted-foreground">
+                  یا پروفایل کامل بسازید
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

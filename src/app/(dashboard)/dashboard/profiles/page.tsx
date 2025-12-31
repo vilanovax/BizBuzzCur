@@ -22,6 +22,7 @@ import {
   Share2,
   Star,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -437,15 +438,23 @@ export default function ProfilesPage() {
             مدیریت و ساخت پروفایل‌های دیجیتال
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button asChild>
-            <Link href="/dashboard/profiles/new">
-              <Plus className="w-4 h-4 ml-2" />
-              پروفایل جدید
-            </Link>
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/profiles/quick">
+                <Zap className="w-4 h-4 ml-2" />
+                سریع
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/profiles/new">
+                <Plus className="w-4 h-4 ml-2" />
+                پروفایل جدید
+              </Link>
+            </Button>
+          </div>
           <span className="text-xs text-muted-foreground">
-            کارت ویزیت، رزومه، رویداد یا شرکت
+            ساخت سریع در ۳ دقیقه یا پروفایل کامل
           </span>
         </div>
       </div>
@@ -561,12 +570,20 @@ export default function ProfilesPage() {
                 <p className="text-muted-foreground mb-4">
                   اولین پروفایل دیجیتال خود را بسازید
                 </p>
-                <Button asChild>
-                  <Link href="/dashboard/profiles/new">
-                    <Plus className="w-4 h-4 ml-2" />
-                    ایجاد پروفایل
-                  </Link>
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button asChild>
+                    <Link href="/dashboard/profiles/quick">
+                      <Zap className="w-4 h-4 ml-2" />
+                      ساخت سریع (۳ دقیقه)
+                    </Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/dashboard/profiles/new">
+                      <Plus className="w-4 h-4 ml-2" />
+                      پروفایل کامل
+                    </Link>
+                  </Button>
+                </div>
               </>
             ) : (
               <p className="text-muted-foreground">پروفایلی با این معیارها یافت نشد</p>
