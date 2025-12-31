@@ -21,6 +21,7 @@ import {
   type JobSignalRequirement,
 } from '@/modules/personality-engine/adapters/job.adapter';
 import type { JobAdWithDetails, EmploymentType, LocationType, ExperienceLevel } from '@/types/job';
+import { getJobSignalWeights, toJobSignalRequirements } from './job-signal-weight.service';
 
 /**
  * Work environment context
@@ -284,11 +285,12 @@ export function matchJob(
  * Match using personality signals with weighted confidence
  *
  * Algorithm:
- * 1. Get archetype requirements for the job type
- * 2. Match each user signal against requirements
- * 3. Weight by importance * confidence
- * 4. Generate human-readable reasons (never mention tests/algorithms)
- * 5. Add warnings for potential friction (never blocking)
+ * 1. Get signal weights from job context (Phase 1 derived + Phase 2 explicit)
+ * 2. Fall back to archetype requirements if no specific weights
+ * 3. Match each user signal against requirements
+ * 4. Weight by importance * confidence
+ * 5. Generate human-readable reasons (never mention tests/algorithms)
+ * 6. Add warnings for potential friction (never blocking)
  */
 function matchWithPersonality(
   signals: Signal[],
@@ -296,8 +298,20 @@ function matchWithPersonality(
   context: JobContext,
   matchingSkills?: string[]
 ): JobMatchResult {
-  const archetype = context.archetype || 'operations';
-  const requirements = JobAdapter.getArchetypeRequirements(archetype);
+  // Use new signal weight service for better matching
+  const weightMap = getJobSignalWeights(job);
+  let requirements: JobSignalRequirement[];
+
+  // If we have meaningful weights from Phase 1/2 data, use them
+  const jobRequirements = toJobSignalRequirements(weightMap);
+  if (jobRequirements.length > 0) {
+    requirements = jobRequirements;
+  } else {
+    // Fall back to archetype-based requirements
+    const archetype = context.archetype || 'operations';
+    requirements = JobAdapter.getArchetypeRequirements(archetype);
+  }
+
   const match = JobAdapter.matchCandidateToJob(signals, requirements);
 
   const reasons: string[] = [];
