@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -13,22 +13,35 @@ import {
   XCircle,
   Clock,
   Loader2,
-  Filter,
   Search,
   MoreVertical,
   Star,
   Mail,
   FileText,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/lib/utils/cn';
+import {
+  CandidateFitInsights,
+  CandidateFitInsightsSkeleton,
+} from '@/components/jobs/CandidateFitInsights';
+import {
+  TeamFitInsights,
+  TeamFitInsightsSkeleton,
+} from '@/components/jobs/TeamFitInsights';
 import type {
   JobAdWithDetails,
   JobApplicationWithDetails,
   ApplicationStatus,
 } from '@/types/job';
 import { APPLICATION_STATUS_LABELS } from '@/types/job';
+import type { CandidateFitResult } from '@/lib/services/candidate-match.service';
+import type { TeamFitResult } from '@/lib/services/team-fit.service';
+import { PremiumGate } from '@/components/premium/PremiumGate';
+import type { PremiumTier } from '@/types/premium';
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
   pending: 'bg-gray-100 text-gray-700',
@@ -65,6 +78,13 @@ export default function JobApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [expandedInsights, setExpandedInsights] = useState<string | null>(null);
+  const [fitInsightsCache, setFitInsightsCache] = useState<Record<string, CandidateFitResult>>({});
+  const [teamFitCache, setTeamFitCache] = useState<Record<string, TeamFitResult>>({});
+  const [loadingInsights, setLoadingInsights] = useState<string | null>(null);
+  const [loadingTeamFit, setLoadingTeamFit] = useState<string | null>(null);
+  const [premiumTier, setPremiumTier] = useState<PremiumTier>('free');
+  const [isPremiumLimited, setIsPremiumLimited] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchData();
@@ -103,6 +123,86 @@ export default function JobApplicationsPage() {
       setLoading(false);
     }
   };
+
+  // Fetch fit insights for an application
+  const fetchFitInsights = useCallback(async (applicationId: string) => {
+    // Check cache first
+    if (fitInsightsCache[applicationId]) {
+      return;
+    }
+
+    setLoadingInsights(applicationId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/applications/${applicationId}/match`);
+      const data = await res.json();
+
+      if (data.success) {
+        setFitInsightsCache((prev) => ({
+          ...prev,
+          [applicationId]: data.data,
+        }));
+        // Track if premium limited
+        if (data.meta?.isPremiumLimited) {
+          setIsPremiumLimited((prev) => ({
+            ...prev,
+            [`candidate_${applicationId}`]: true,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Fit insights error:', err);
+    } finally {
+      setLoadingInsights(null);
+    }
+  }, [jobId, fitInsightsCache]);
+
+  // Fetch team fit insights for an application
+  const fetchTeamFit = useCallback(async (applicationId: string) => {
+    // Check cache first
+    if (teamFitCache[applicationId]) {
+      return;
+    }
+
+    setLoadingTeamFit(applicationId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/applications/${applicationId}/team-fit`);
+      const data = await res.json();
+
+      if (data.success) {
+        setTeamFitCache((prev) => ({
+          ...prev,
+          [applicationId]: data.data,
+        }));
+        // Track if premium limited
+        if (data.meta?.isPremiumLimited) {
+          setIsPremiumLimited((prev) => ({
+            ...prev,
+            [`team_${applicationId}`]: true,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Team fit error:', err);
+    } finally {
+      setLoadingTeamFit(null);
+    }
+  }, [jobId, teamFitCache]);
+
+  // Toggle insights expansion
+  const toggleInsights = useCallback((applicationId: string) => {
+    if (expandedInsights === applicationId) {
+      setExpandedInsights(null);
+    } else {
+      setExpandedInsights(applicationId);
+      // Fetch both insights in parallel if not cached
+      if (!fitInsightsCache[applicationId]) {
+        fetchFitInsights(applicationId);
+      }
+      if (!teamFitCache[applicationId]) {
+        fetchTeamFit(applicationId);
+      }
+    }
+  }, [expandedInsights, fitInsightsCache, teamFitCache, fetchFitInsights, fetchTeamFit]);
 
   const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
     setUpdatingStatus(applicationId);
@@ -325,6 +425,66 @@ export default function JobApplicationsPage() {
                         <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
                           {app.cover_message}
                         </p>
+                      )}
+
+                      {/* Fit Insights Toggle */}
+                      <button
+                        onClick={() => toggleInsights(app.id)}
+                        className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {expandedInsights === app.id ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                        <span>بینش‌های تطابق</span>
+                      </button>
+
+                      {/* Insights Content */}
+                      {expandedInsights === app.id && (
+                        <div className="mt-3 space-y-3">
+                          {/* Candidate Fit Insights */}
+                          {loadingInsights === app.id ? (
+                            <CandidateFitInsightsSkeleton />
+                          ) : fitInsightsCache[app.id] ? (
+                            <>
+                              <CandidateFitInsights
+                                fitResult={fitInsightsCache[app.id]}
+                                showLabel={true}
+                              />
+                              {/* Premium upsell for expanded candidate insights */}
+                              {isPremiumLimited[`candidate_${app.id}`] && (
+                                <PremiumGate
+                                  currentTier={premiumTier}
+                                  feature="candidate_insights_expanded"
+                                  requiredTier="starter"
+                                  variant="inline"
+                                />
+                              )}
+                            </>
+                          ) : null}
+
+                          {/* Team Fit Insights */}
+                          {loadingTeamFit === app.id ? (
+                            <TeamFitInsightsSkeleton />
+                          ) : teamFitCache[app.id] ? (
+                            <>
+                              <TeamFitInsights
+                                result={teamFitCache[app.id]}
+                                showLabel={true}
+                              />
+                              {/* Premium upsell for detailed team insights */}
+                              {isPremiumLimited[`team_${app.id}`] && (
+                                <PremiumGate
+                                  currentTier={premiumTier}
+                                  feature="team_fit_detailed"
+                                  requiredTier="starter"
+                                  variant="inline"
+                                />
+                              )}
+                            </>
+                          ) : null}
+                        </div>
                       )}
                     </div>
 

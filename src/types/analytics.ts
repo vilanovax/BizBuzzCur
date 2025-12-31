@@ -1,7 +1,7 @@
 // Analytics Event Types
 // Structured event tracking for user behavior
 
-export type EventSource = 'onboarding' | 'profile_builder' | 'identity_page' | 'dashboard';
+export type EventSource = 'onboarding' | 'profile_builder' | 'identity_page' | 'dashboard' | 'job_detail' | 'workstyle_test' | 'company' | 'event';
 export type EntryApp = 'bizbuzz' | 'carbarg' | 'direct' | 'unknown';
 
 // Event names - structured and consistent
@@ -37,12 +37,29 @@ export type ProfileEventName =
   | 'profile_viewed'
   | 'profile_shared';
 
+export type JobEventName =
+  | 'job_detail_viewed'      // When job detail page loads
+  | 'why_this_job_shown'     // When explanation block renders
+  | 'apply_clicked'          // On Apply button click
+  | 'application_started'    // When job conversation is created
+  | 'job_viewed'             // Legacy - keep for backward compat
+  | 'job_applied'            // Legacy
+  | 'job_apply_started'      // Legacy
+  | 'job_apply_cancelled';   // Legacy
+
+export type WorkstyleEventName =
+  | 'workstyle_test_started'
+  | 'workstyle_test_completed'
+  | 'workstyle_test_abandoned';
+
 export type EventName =
   | OnboardingEventName
   | DomainEventName
   | SpecializationEventName
   | SkillEventName
-  | ProfileEventName;
+  | ProfileEventName
+  | JobEventName
+  | WorkstyleEventName;
 
 // Base event properties (required for all events)
 export interface BaseEventProperties {
@@ -94,13 +111,49 @@ export interface ProfileEventProperties extends BaseEventProperties {
   template_id?: string;
 }
 
+export interface JobEventProperties extends BaseEventProperties {
+  job_id?: string;
+  job_title?: string;
+  company_id?: string;
+  company_name?: string;
+  domain_id?: string;
+  /** Whether user has personality signals for matching */
+  has_personality_signals?: boolean;
+  /** Type of explanation shown: personality-based or generic */
+  explanation_type?: 'personality' | 'generic';
+  /** Whether explanation was visible when action taken */
+  explanation_seen?: boolean;
+  /** Number of reasons shown in explanation */
+  reasons_count?: number;
+  /** Whether warnings were shown */
+  has_warnings?: boolean;
+  /** Source of job view: dashboard, company page, or event page */
+  job_source?: 'dashboard' | 'company' | 'event';
+  /** Whether application came from job detail page */
+  from_job_detail?: boolean;
+  // Legacy fields (for backward compatibility)
+  match_type?: 'personality' | 'skills' | 'domain' | 'generic';
+  match_score?: number;
+  time_on_page_ms?: number;
+}
+
+export interface WorkstyleEventProperties extends BaseEventProperties {
+  test_type?: 'disc' | 'holland';
+  questions_answered?: number;
+  total_questions?: number;
+  avg_response_time_ms?: number;
+  signals_generated?: number;
+}
+
 // Union type for all event properties
 export type EventProperties =
   | OnboardingEventProperties
   | DomainEventProperties
   | SpecializationEventProperties
   | SkillEventProperties
-  | ProfileEventProperties;
+  | ProfileEventProperties
+  | JobEventProperties
+  | WorkstyleEventProperties;
 
 // Complete event structure
 export interface AnalyticsEvent {

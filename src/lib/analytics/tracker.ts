@@ -15,6 +15,8 @@ import type {
   SpecializationEventProperties,
   SkillEventProperties,
   ProfileEventProperties,
+  JobEventProperties,
+  WorkstyleEventProperties,
 } from '@/types/analytics';
 
 // Session ID for correlating events
@@ -346,6 +348,217 @@ export function trackProfileUpdated(
 }
 
 // ============================================
+// JOB EVENTS - KPI Telemetry
+// Decision-making telemetry, not vanity metrics.
+// Track behavior, not personality.
+// ============================================
+
+/**
+ * 1. job_detail_viewed
+ * Triggered when job detail page loads.
+ * Primary KPI funnel entry point.
+ */
+export function trackJobDetailViewed(
+  jobId: string,
+  jobSource: 'dashboard' | 'company' | 'event',
+  hasPersonalitySignals: boolean
+): void {
+  trackEvent('job_detail_viewed', {
+    user_id: 'anonymous', // Will be enriched by session
+    source: 'job_detail',
+    job_id: jobId,
+    job_source: jobSource,
+    has_personality_signals: hasPersonalitySignals,
+  } as JobEventProperties);
+}
+
+/**
+ * 2. why_this_job_shown
+ * Triggered when explanation block is rendered.
+ * Key for measuring explanation impact.
+ */
+export function trackWhyThisJobShown(
+  jobId: string,
+  explanationType: 'personality' | 'generic',
+  reasonsCount: number,
+  hasWarnings: boolean
+): void {
+  trackEvent('why_this_job_shown', {
+    user_id: 'anonymous',
+    source: 'job_detail',
+    job_id: jobId,
+    explanation_type: explanationType,
+    reasons_count: reasonsCount,
+    has_warnings: hasWarnings,
+  } as JobEventProperties);
+}
+
+/**
+ * 3. apply_clicked
+ * Triggered on Apply button click.
+ * Key conversion event.
+ */
+export function trackApplyClicked(
+  jobId: string,
+  explanationSeen: boolean,
+  explanationType: 'personality' | 'generic'
+): void {
+  trackEvent('apply_clicked', {
+    user_id: 'anonymous',
+    source: 'job_detail',
+    job_id: jobId,
+    explanation_seen: explanationSeen,
+    explanation_type: explanationType,
+  } as JobEventProperties);
+}
+
+/**
+ * 4. application_started
+ * Triggered when job conversation is created.
+ * Final funnel conversion.
+ */
+export function trackApplicationStarted(
+  jobId: string,
+  fromJobDetail: boolean = true
+): void {
+  trackEvent('application_started', {
+    user_id: 'anonymous',
+    source: 'job_detail',
+    job_id: jobId,
+    from_job_detail: fromJobDetail,
+  } as JobEventProperties);
+}
+
+// ============================================
+// LEGACY JOB EVENTS (Backward Compatibility)
+// ============================================
+
+export function trackJobViewed(
+  userId: string | null,
+  jobId: string,
+  jobTitle: string,
+  companyId: string,
+  companyName: string,
+  hasPersonalitySignals: boolean,
+  matchType: 'personality' | 'skills' | 'domain' | 'generic',
+  matchScore?: number
+): void {
+  trackEvent('job_viewed', {
+    user_id: userId || 'anonymous',
+    source: 'job_detail',
+    job_id: jobId,
+    job_title: jobTitle,
+    company_id: companyId,
+    company_name: companyName,
+    has_personality_signals: hasPersonalitySignals,
+    match_type: matchType,
+    match_score: matchScore,
+  } as JobEventProperties);
+}
+
+export function trackJobApplyStarted(
+  userId: string,
+  jobId: string,
+  jobTitle: string,
+  hasPersonalitySignals: boolean,
+  matchType: 'personality' | 'skills' | 'domain' | 'generic'
+): void {
+  trackEvent('job_apply_started', {
+    user_id: userId,
+    source: 'job_detail',
+    job_id: jobId,
+    job_title: jobTitle,
+    has_personality_signals: hasPersonalitySignals,
+    match_type: matchType,
+  } as JobEventProperties);
+}
+
+export function trackJobApplied(
+  userId: string,
+  jobId: string,
+  jobTitle: string,
+  companyId: string,
+  hasPersonalitySignals: boolean,
+  matchType: 'personality' | 'skills' | 'domain' | 'generic',
+  matchScore?: number,
+  timeOnPageMs?: number
+): void {
+  trackEvent('job_applied', {
+    user_id: userId,
+    source: 'job_detail',
+    job_id: jobId,
+    job_title: jobTitle,
+    company_id: companyId,
+    has_personality_signals: hasPersonalitySignals,
+    match_type: matchType,
+    match_score: matchScore,
+    time_on_page_ms: timeOnPageMs,
+  } as JobEventProperties);
+}
+
+export function trackJobApplyCancelled(
+  userId: string,
+  jobId: string,
+  hasPersonalitySignals: boolean
+): void {
+  trackEvent('job_apply_cancelled', {
+    user_id: userId,
+    source: 'job_detail',
+    job_id: jobId,
+    has_personality_signals: hasPersonalitySignals,
+  } as JobEventProperties);
+}
+
+// ============================================
+// WORKSTYLE TEST EVENTS
+// ============================================
+
+export function trackWorkstyleTestStarted(
+  userId: string,
+  testType: 'disc' | 'holland'
+): void {
+  trackEvent('workstyle_test_started', {
+    user_id: userId,
+    source: 'workstyle_test',
+    test_type: testType,
+  } as WorkstyleEventProperties);
+}
+
+export function trackWorkstyleTestCompleted(
+  userId: string,
+  testType: 'disc' | 'holland',
+  questionsAnswered: number,
+  totalQuestions: number,
+  avgResponseTimeMs: number,
+  signalsGenerated: number
+): void {
+  trackEvent('workstyle_test_completed', {
+    user_id: userId,
+    source: 'workstyle_test',
+    test_type: testType,
+    questions_answered: questionsAnswered,
+    total_questions: totalQuestions,
+    avg_response_time_ms: avgResponseTimeMs,
+    signals_generated: signalsGenerated,
+  } as WorkstyleEventProperties);
+}
+
+export function trackWorkstyleTestAbandoned(
+  userId: string,
+  testType: 'disc' | 'holland',
+  questionsAnswered: number,
+  totalQuestions: number
+): void {
+  trackEvent('workstyle_test_abandoned', {
+    user_id: userId,
+    source: 'workstyle_test',
+    test_type: testType,
+    questions_answered: questionsAnswered,
+    total_questions: totalQuestions,
+  } as WorkstyleEventProperties);
+}
+
+// ============================================
 // UTILITY EXPORTS
 // ============================================
 
@@ -376,6 +589,22 @@ export const analytics = {
   // Profile
   trackProfileCreated,
   trackProfileUpdated,
+
+  // Jobs - KPI Telemetry (Primary)
+  trackJobDetailViewed,
+  trackWhyThisJobShown,
+  trackApplyClicked,
+  trackApplicationStarted,
+  // Jobs - Legacy
+  trackJobViewed,
+  trackJobApplyStarted,
+  trackJobApplied,
+  trackJobApplyCancelled,
+
+  // Workstyle Test
+  trackWorkstyleTestStarted,
+  trackWorkstyleTestCompleted,
+  trackWorkstyleTestAbandoned,
 
   // Utility
   setEntryApp,

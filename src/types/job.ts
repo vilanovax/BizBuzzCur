@@ -76,6 +76,12 @@ export interface JobAdWithDetails extends JobAd {
     name: string;
     logo_url?: string | null;
     slug: string;
+    industry?: string | null;
+    company_size?: string | null;
+    tagline?: string | null;
+    city?: string | null;
+    country?: string | null;
+    website_url?: string | null;
   };
   department?: {
     id: string;

@@ -25,6 +25,8 @@ import {
   Power,
   Copy,
   Check,
+  Lightbulb,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -39,8 +41,10 @@ import {
 } from '@/types/company';
 import type { JobAd } from '@/types/job';
 import { JOB_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, LOCATION_TYPE_LABELS } from '@/types/job';
+import { OrgInsights, OrgInsightsSkeleton } from '@/components/org/OrgInsights';
+import type { OrgIntelligenceResult } from '@/types/org-intelligence';
 
-type Tab = 'overview' | 'jobs' | 'settings';
+type Tab = 'overview' | 'jobs' | 'insights' | 'settings';
 
 interface CompanyDetailPageProps {
   params: Promise<{ id: string }>;
@@ -57,6 +61,8 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
   const [togglingJob, setTogglingJob] = useState<string | null>(null);
   const [deletingJob, setDeletingJob] = useState<string | null>(null);
   const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+  const [orgInsights, setOrgInsights] = useState<OrgIntelligenceResult | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const isAdmin = canManageCompany(company?.user_role);
 
@@ -114,7 +120,10 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
     if (activeTab === 'jobs') {
       fetchJobs();
     }
-  }, [activeTab, id]);
+    if (activeTab === 'insights' && isAdmin && !orgInsights) {
+      fetchOrgInsights();
+    }
+  }, [activeTab, id, isAdmin]);
 
   const fetchCompany = async () => {
     try {
@@ -147,10 +156,27 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
     }
   };
 
+  const fetchOrgInsights = async () => {
+    try {
+      setInsightsLoading(true);
+      const res = await fetch(`/api/companies/${id}/org-intelligence`);
+      const data = await res.json();
+
+      if (data.success) {
+        setOrgInsights(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching org insights:', err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
   // Tabs configuration based on role
   const tabs: { id: Tab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
     { id: 'overview', label: 'درباره', icon: <Building2 className="w-4 h-4" /> },
     { id: 'jobs', label: 'فرصت‌های شغلی', icon: <Briefcase className="w-4 h-4" /> },
+    { id: 'insights', label: 'بینش‌های سازمانی', icon: <Lightbulb className="w-4 h-4" />, adminOnly: true },
     { id: 'settings', label: 'تنظیمات', icon: <Settings className="w-4 h-4" />, adminOnly: true },
   ];
 
@@ -631,16 +657,42 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
         </div>
       )}
 
+      {activeTab === 'insights' && isAdmin && (
+        <div className="space-y-6">
+          {insightsLoading ? (
+            <OrgInsightsSkeleton />
+          ) : orgInsights ? (
+            <OrgInsights result={orgInsights} />
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Lightbulb className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="font-semibold mb-2">بینش‌های سازمانی</h3>
+                <p className="text-muted-foreground text-sm">
+                  خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {activeTab === 'settings' && isAdmin && (
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6">
               <h3 className="font-semibold mb-4">تنظیمات شرکت</h3>
-              <div className="space-y-4">
-                <Button variant="outline" asChild>
+              <div className="space-y-3">
+                <Button variant="outline" asChild className="w-full justify-start">
                   <Link href={`/dashboard/companies/${id}/edit`}>
                     <Edit className="w-4 h-4 ml-2" />
                     ویرایش اطلاعات شرکت
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="w-full justify-start">
+                  <Link href={`/dashboard/companies/${id}/compliance`}>
+                    <Shield className="w-4 h-4 ml-2" />
+                    شفافیت و انطباق
                   </Link>
                 </Button>
               </div>

@@ -16,18 +16,31 @@ import {
   ArrowRight,
   Sparkles,
   Send,
+  Zap,
+  Target,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/lib/utils/cn';
+import { analytics } from '@/lib/analytics';
 import type { JobAdWithDetails } from '@/types/job';
 import {
   EMPLOYMENT_TYPE_LABELS,
   LOCATION_TYPE_LABELS,
   EXPERIENCE_LEVEL_LABELS,
-  COMPANY_SIZE_LABELS,
 } from '@/types/job';
-import { COMPANY_SIZE_LABELS as COMPANY_SIZES } from '@/types/company';
+import { COMPANY_SIZE_LABELS } from '@/types/company';
+
+interface JobMatchResult {
+  hasPersonalityMatch: boolean;
+  score?: number;
+  reasons: string[];
+  warnings?: string[];
+  summary: string;
+  matchType: 'personality' | 'skills' | 'domain' | 'generic';
+  confidence?: number;
+}
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -45,19 +58,96 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [coverMessage, setCoverMessage] = useState('');
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [matchData, setMatchData] = useState<JobMatchResult | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pageLoadTime] = useState(() => Date.now());
+  const [hasTrackedView, setHasTrackedView] = useState(false);
+  const [hasTrackedExplanation, setHasTrackedExplanation] = useState(false);
+  const [jobSource] = useState<'dashboard' | 'company' | 'event'>(() => {
+    // Detect source from referrer or URL params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source');
+      if (source === 'company') return 'company';
+      if (source === 'event') return 'event';
+      // Check referrer
+      const referrer = document.referrer;
+      if (referrer.includes('/dashboard')) return 'dashboard';
+      if (referrer.includes('/e/')) return 'event';
+    }
+    return 'dashboard';
+  });
 
   useEffect(() => {
     fetchJob();
     checkAuth();
+    fetchMatchData();
   }, [jobId]);
+
+  // KPI Telemetry: Track job detail view
+  useEffect(() => {
+    if (job && !hasTrackedView) {
+      // Primary KPI event
+      analytics.trackJobDetailViewed(
+        job.id,
+        jobSource,
+        !!matchData?.hasPersonalityMatch
+      );
+      // Legacy event for backward compatibility
+      if (matchData) {
+        analytics.trackJobViewed(
+          userId,
+          job.id,
+          job.title,
+          job.company_id,
+          job.company?.name || '',
+          matchData.hasPersonalityMatch,
+          matchData.matchType,
+          matchData.score
+        );
+      }
+      setHasTrackedView(true);
+    }
+  }, [job, matchData, userId, hasTrackedView, jobSource]);
+
+  // KPI Telemetry: Track explanation block render
+  useEffect(() => {
+    if (job && matchData && !hasTrackedExplanation) {
+      const explanationType = matchData.hasPersonalityMatch ? 'personality' : 'generic';
+      const reasonsCount = matchData.reasons?.length || 0;
+      const hasWarnings = (matchData.warnings?.length || 0) > 0;
+
+      analytics.trackWhyThisJobShown(
+        job.id,
+        explanationType,
+        reasonsCount,
+        hasWarnings
+      );
+      setHasTrackedExplanation(true);
+    }
+  }, [job, matchData, hasTrackedExplanation]);
 
   const checkAuth = async () => {
     try {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
       setIsLoggedIn(!!data.user);
+      setUserId(data.user?.id || null);
     } catch {
       setIsLoggedIn(false);
+      setUserId(null);
+    }
+  };
+
+  const fetchMatchData = async () => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/match`);
+      const data = await res.json();
+      if (data.success) {
+        setMatchData(data.data);
+      }
+    } catch {
+      // Silent fail - match data is optional
     }
   };
 
@@ -85,6 +175,27 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       router.push(`/login?redirect=/jobs/${jobId}`);
       return;
     }
+
+    // KPI Telemetry: Track apply click (primary conversion event)
+    if (job && matchData) {
+      const explanationType = matchData.hasPersonalityMatch ? 'personality' : 'generic';
+      analytics.trackApplyClicked(
+        job.id,
+        true, // explanation was seen (always true on job detail page)
+        explanationType
+      );
+    }
+
+    // Legacy tracking
+    if (userId && job && matchData) {
+      analytics.trackJobApplyStarted(
+        userId,
+        job.id,
+        job.title,
+        matchData.hasPersonalityMatch,
+        matchData.matchType
+      );
+    }
     setShowApplyModal(true);
   };
 
@@ -104,6 +215,25 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       const data = await res.json();
 
       if (data.success) {
+        // KPI Telemetry: Track application started (final funnel conversion)
+        if (job) {
+          analytics.trackApplicationStarted(job.id, true);
+        }
+
+        // Legacy tracking
+        if (userId && job && matchData) {
+          const timeOnPageMs = Date.now() - pageLoadTime;
+          analytics.trackJobApplied(
+            userId,
+            job.id,
+            job.title,
+            job.company_id,
+            matchData.hasPersonalityMatch,
+            matchData.matchType,
+            matchData.score,
+            timeOnPageMs
+          );
+        }
         // Redirect to conversation
         router.push(`/dashboard/inbox/${data.data.conversation_id}`);
       } else {
@@ -214,18 +344,70 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               </CardContent>
             </Card>
 
-            {/* Context Box - Why User Sees This */}
-            <Card className="border-primary/20 bg-primary/5">
+            {/* Why This Role - Explanation Section */}
+            <Card className={cn(
+              'border-primary/20',
+              matchData?.hasPersonalityMatch ? 'bg-gradient-to-br from-primary/5 to-primary/10' : 'bg-primary/5'
+            )}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">چرا این آگهی را می‌بینید؟</p>
+                  {matchData?.hasPersonalityMatch ? (
+                    <Zap className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1">
+                    {/* Section Title - Human, non-algorithmic */}
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">چرا این موقعیت مناسب شماست</p>
+                      {matchData?.hasPersonalityMatch && matchData.score && matchData.score >= 70 && (
+                        <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                          پیشنهاد ویژه
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Summary - Calm, professional tone */}
                     <p className="text-sm text-muted-foreground mt-1">
-                      {job.domain?.name_fa
-                        ? `این موقعیت در حوزه ${job.domain.name_fa} است که با تخصص شما مرتبط است.`
-                        : 'شما از طریق صفحه شرکت به این آگهی دسترسی پیدا کردید.'}
+                      {matchData?.summary || (job.domain?.name_fa
+                        ? `این موقعیت در حوزه ${job.domain.name_fa} با تخصص و فعالیت شما همخوانی دارد.`
+                        : 'این موقعیت بر اساس مهارت‌ها و فعالیت شما پیشنهاد شده است.')}
                     </p>
+
+                    {/* Reasons - Positive, specific, human-readable */}
+                    {matchData?.reasons && matchData.reasons.length > 0 && (
+                      <ul className="mt-3 space-y-1.5">
+                        {matchData.reasons.slice(0, 3).map((reason, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Warnings - Soft, informational, never blocking */}
+                    {matchData?.warnings && matchData.warnings.length > 0 && (
+                      <div className="mt-3 p-2.5 bg-muted/50 rounded-lg">
+                        {matchData.warnings.slice(0, 1).map((warning, idx) => (
+                          <p key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                            <span>{warning}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* CTA for workstyle test - Only when no personality data */}
+                    {isLoggedIn && matchData && !matchData.hasPersonalityMatch && (
+                      <Link
+                        href="/dashboard/workstyle"
+                        className="mt-3 inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        پیشنهادهای دقیق‌تر بر اساس سبک کاری شما
+                      </Link>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -311,6 +493,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     <p className="text-sm text-muted-foreground mb-4">
                       با ارسال درخواست، گفتگویی با تیم استخدام این شرکت آغاز می‌شود.
                     </p>
+                    {/* Subtle context line when personality match exists */}
+                    {matchData?.hasPersonalityMatch && matchData.score && matchData.score >= 55 && (
+                      <p className="text-xs text-primary/80 mb-3 flex items-center gap-1.5">
+                        <Target className="w-3 h-3" />
+                        این موقعیت با سبک کاری شما همخوانی دارد
+                      </p>
+                    )}
                     <Button className="w-full" onClick={handleApplyClick}>
                       <Send className="w-4 h-4 ml-2" />
                       ارسال درخواست
@@ -364,7 +553,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                   {job.company?.company_size && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span>{COMPANY_SIZES[job.company.company_size]}</span>
+                      <span>{COMPANY_SIZE_LABELS[job.company.company_size as keyof typeof COMPANY_SIZE_LABELS]}</span>
                     </div>
                   )}
                   {(job.company?.city || job.company?.country) && (
@@ -395,7 +584,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => !isApplying && setShowApplyModal(false)}
+            onClick={() => {
+              if (!isApplying) {
+                if (userId && job && matchData) {
+                  analytics.trackJobApplyCancelled(userId, job.id, matchData.hasPersonalityMatch);
+                }
+                setShowApplyModal(false);
+              }
+            }}
           />
           <Card className="relative z-10 w-full max-w-lg mx-4">
             <CardContent className="p-6">
@@ -440,7 +636,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setShowApplyModal(false)}
+                  onClick={() => {
+                    if (userId && job && matchData) {
+                      analytics.trackJobApplyCancelled(userId, job.id, matchData.hasPersonalityMatch);
+                    }
+                    setShowApplyModal(false);
+                  }}
                   disabled={isApplying}
                 >
                   انصراف
