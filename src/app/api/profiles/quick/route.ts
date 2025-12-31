@@ -102,7 +102,6 @@ export async function POST(request: NextRequest) {
         cta_type,
         is_public,
         is_active,
-        is_primary,
         theme_color,
         schema_version
       ) VALUES (
@@ -121,7 +120,6 @@ export async function POST(request: NextRequest) {
         ${intentConfig.defaults.cta_type},
         true,
         true,
-        false,
         '#2563eb',
         '1.0'
       )
@@ -135,19 +133,6 @@ export async function POST(request: NextRequest) {
         visibility,
         created_at
     `;
-
-    // Check if this is user's first profile, make it primary
-    const [profileCount] = await sql`
-      SELECT COUNT(*) as count FROM profiles
-      WHERE user_id = ${user.id} AND deleted_at IS NULL
-    `;
-
-    if (parseInt(profileCount.count) === 1) {
-      await sql`
-        UPDATE profiles SET is_primary = true
-        WHERE id = ${profile.id}
-      `;
-    }
 
     return NextResponse.json({
       success: true,

@@ -24,11 +24,12 @@ import {
   Mail,
   Phone,
   Link as LinkIcon,
-  Camera,
   Check,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { cn } from '@/lib/utils/cn';
 import {
   type ProfileIntent,
@@ -354,16 +355,15 @@ export function QuickProfileWizard({
 
         {/* Photo (optional) */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            {copy.info.fields.photo.label}
-          </label>
-          <button
-            type="button"
-            className="w-full p-4 rounded-lg border border-dashed bg-muted/30 hover:bg-muted/50 transition-colors flex items-center justify-center gap-2 text-muted-foreground"
-          >
-            <Camera className="w-5 h-5" />
-            <span className="text-sm">افزودن تصویر</span>
-          </button>
+          <ImageUpload
+            value={formData.photo_url}
+            onChange={(url) => setFormData({ ...formData, photo_url: url || '' })}
+            type="profile_photo"
+            labelFa={copy.info.fields.photo.label}
+            aspectRatio="square"
+            maxSize={5}
+            enableCrop={true}
+          />
           <p className="text-xs text-muted-foreground mt-1">
             {copy.info.fields.photo.helper}
           </p>
