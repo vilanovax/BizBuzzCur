@@ -16,7 +16,11 @@ import {
   Power,
   Trash2,
   Check,
+  AlertCircle,
+  Plus,
+  ArrowLeft,
 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/lib/utils/cn';
 import type { CompanyWithStats, CompanyRole } from '@/types/company';
@@ -201,6 +205,24 @@ export function CompanyCard({ company, onClick, onToggleActive, onDelete }: Comp
               </div>
             )}
 
+            {/* Status Indicators */}
+            {canManage && (company.member_count === 0 || company.active_jobs_count === 0) && (
+              <div className="mb-3 space-y-1.5">
+                {company.member_count === 0 && (
+                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1.5 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>هنوز عضوی به تیم اضافه نشده</span>
+                  </div>
+                )}
+                {company.active_jobs_count === 0 && (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 rounded-lg">
+                    <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>فرصت شغلی فعالی ندارید</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Stats */}
             <div className="flex items-center gap-4 pt-3 border-t text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
@@ -214,6 +236,38 @@ export function CompanyCard({ company, onClick, onToggleActive, onDelete }: Comp
                 </div>
               )}
             </div>
+
+            {/* Quick Actions */}
+            {canManage && (
+              <div className="flex gap-2 mt-3 pt-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs h-8"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/dashboard/companies/${company.id}`);
+                  }}
+                >
+                  مدیریت
+                  <ArrowLeft className="w-3 h-3 mr-1" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/dashboard/jobs/new?company=${company.id}`);
+                  }}
+                >
+                  <Plus className="w-3 h-3 ml-1" />
+                  آگهی
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </Link>
