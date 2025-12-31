@@ -20,6 +20,8 @@ import {
   Power,
   PowerOff,
   Share2,
+  Star,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -35,10 +37,19 @@ const PROFILE_TYPE_CONFIG: Record<ProfileType, { icon: React.ElementType; label:
   company: { icon: Building2, label: 'شرکت', color: '#0891b2' },
 };
 
+// Context suggestions for profile types
+const CONTEXT_SUGGESTIONS: Record<ProfileType, string[]> = {
+  business_card: ['جلسات کاری', 'شبکه‌سازی سریع', 'رویدادها'],
+  resume: ['درخواست شغل', 'فرصت‌های کاری', 'استخدام'],
+  event: ['رویدادهای تخصصی', 'کنفرانس‌ها', 'میت‌آپ‌ها'],
+  company: ['معرفی کسب‌وکار', 'همکاری B2B', 'جذب سرمایه'],
+};
+
 // ProfileCard Component
 interface ProfileCardProps {
   profile: Profile;
   typeConfig: { icon: React.ElementType; label: string; color: string };
+  isDefault?: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
   setPreviewProfile: (profile: Profile) => void;
@@ -52,6 +63,7 @@ interface ProfileCardProps {
 function ProfileCard({
   profile,
   typeConfig,
+  isDefault = false,
   openMenuId,
   setOpenMenuId,
   setPreviewProfile,
@@ -62,15 +74,27 @@ function ProfileCard({
   shareProfile,
 }: ProfileCardProps) {
   const TypeIcon = typeConfig.icon;
+  const contextSuggestions = CONTEXT_SUGGESTIONS[profile.profile_type];
 
   return (
     <Card
       className={cn(
         "group relative hover:shadow-md transition-shadow cursor-pointer",
-        !profile.is_public && "opacity-60 grayscale"
+        !profile.is_public && "opacity-60 grayscale",
+        isDefault && "ring-2 ring-primary/50"
       )}
       onClick={() => setPreviewProfile(profile)}
     >
+      {/* Default badge */}
+      {isDefault && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <div className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+            <Star className="w-3 h-3 fill-current" />
+            پیش‌فرض
+          </div>
+        </div>
+      )}
+
       {/* Color bar */}
       <div
         className="h-1 w-full"
@@ -210,10 +234,15 @@ function ProfileCard({
 
         {/* Info */}
         {profile.headline && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
             {profile.headline}
           </p>
         )}
+
+        {/* Context hint */}
+        <p className="text-xs text-muted-foreground/70 mb-3">
+          مناسب برای: {contextSuggestions.slice(0, 2).join('، ')}
+        </p>
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t">
@@ -391,6 +420,13 @@ export default function ProfilesPage() {
       }, {} as Record<ProfileType, Profile[]>)
     : null;
 
+  // Find the default/most viewed profile
+  const defaultProfile = profiles.length > 0
+    ? profiles.reduce((best, current) =>
+        (current.view_count || 0) > (best.view_count || 0) && current.is_public ? current : best
+      , profiles.find(p => p.is_public) || profiles[0])
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -401,13 +437,33 @@ export default function ProfilesPage() {
             مدیریت و ساخت پروفایل‌های دیجیتال
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/profiles/new">
-            <Plus className="w-4 h-4 ml-2" />
-            پروفایل جدید
-          </Link>
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button asChild>
+            <Link href="/dashboard/profiles/new">
+              <Plus className="w-4 h-4 ml-2" />
+              پروفایل جدید
+            </Link>
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            کارت ویزیت، رزومه، رویداد یا شرکت
+          </span>
+        </div>
       </div>
+
+      {/* Context Banner - Only show when profiles exist */}
+      {profiles.length > 0 && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">هر موقعیت، پروفایل مخصوص خودش را دارد</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                پروفایل مناسب را انتخاب کنید و با QR یا لینک به اشتراک بگذارید
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-4">
@@ -548,6 +604,7 @@ export default function ProfilesPage() {
                       key={profile.id}
                       profile={profile}
                       typeConfig={typeConfig}
+                      isDefault={defaultProfile?.id === profile.id}
                       openMenuId={openMenuId}
                       setOpenMenuId={setOpenMenuId}
                       setPreviewProfile={setPreviewProfile}
@@ -573,6 +630,7 @@ export default function ProfilesPage() {
                 key={profile.id}
                 profile={profile}
                 typeConfig={typeConfig}
+                isDefault={defaultProfile?.id === profile.id}
                 openMenuId={openMenuId}
                 setOpenMenuId={setOpenMenuId}
                 setPreviewProfile={setPreviewProfile}
