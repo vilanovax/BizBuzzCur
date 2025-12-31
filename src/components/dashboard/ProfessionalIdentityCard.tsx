@@ -6,36 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils/cn';
 import { DynamicIcon, getIconEmoji } from '@/lib/utils/icons';
-import { Briefcase, ChevronLeft, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { Briefcase, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import type { UserProfessionalProfile } from '@/types/professional';
 import { SKILL_LEVELS, type SkillLevel } from '@/types/professional';
 
 export function ProfessionalIdentityCard() {
   const [profile, setProfile] = React.useState<UserProfessionalProfile | null>(null);
-  const [hasWorkstyle, setHasWorkstyle] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     async function loadProfile() {
       try {
-        // Load profile and workstyle status in parallel
-        const [profileRes, workstyleRes] = await Promise.all([
-          fetch('/api/user/professional'),
-          fetch('/api/workstyle/status'),
-        ]);
-
+        const profileRes = await fetch('/api/user/professional');
         const profileData = await profileRes.json();
-        const workstyleData = await workstyleRes.json();
 
         if (profileData.success) {
           setProfile(profileData.data);
         } else {
           setError(profileData.error);
-        }
-
-        if (workstyleData.success) {
-          setHasWorkstyle(workstyleData.data?.hasSignals || false);
         }
       } catch (err) {
         console.error('Failed to load profile:', err);
@@ -94,24 +83,6 @@ export function ProfessionalIdentityCard() {
             </Button>
           </div>
 
-          {/* Workstyle link even without identity */}
-          {!hasWorkstyle && (
-            <div className="pt-3 border-t">
-              <Link
-                href="/dashboard/workstyle"
-                className="flex items-center gap-3 p-2.5 -mx-2.5 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
-              >
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">آزمون سبک کاری</p>
-                  <p className="text-xs text-muted-foreground">سبک کاری خود را کشف کنید</p>
-                </div>
-                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -224,33 +195,6 @@ export function ProfessionalIdentityCard() {
           </div>
         )}
 
-        {/* Workstyle Assessment Link */}
-        <div className="pt-3 border-t">
-          {hasWorkstyle ? (
-            <Link
-              href="/dashboard/workstyle"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>سبک کاری شما تکمیل شده</span>
-              <ChevronLeft className="h-4 w-4 mr-auto" />
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard/workstyle"
-              className="flex items-center gap-3 p-2.5 -mx-2.5 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
-            >
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">آزمون سبک کاری</p>
-                <p className="text-xs text-muted-foreground">سبک کاری خود را کشف کنید</p>
-              </div>
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

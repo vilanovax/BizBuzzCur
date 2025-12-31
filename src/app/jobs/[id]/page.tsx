@@ -398,15 +398,28 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                       </div>
                     )}
 
-                    {/* CTA for workstyle test - Only when no personality data */}
+                    {/* Contextual CTA for workstyle - Only when no personality signals */}
                     {isLoggedIn && matchData && !matchData.hasPersonalityMatch && (
-                      <Link
-                        href="/dashboard/workstyle"
-                        className="mt-3 inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        پیشنهادهای دقیق‌تر بر اساس سبک کاری شما
-                      </Link>
+                      <div className="mt-4 p-3 bg-background/50 rounded-lg border border-primary/10">
+                        <p className="text-sm font-medium mb-1">
+                          می‌خوای پیشنهادهای شغلی دقیق‌تر بشن؟
+                        </p>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          با چند سؤال کوتاه (حدود ۵ دقیقه)، کمک کن نقش‌هایی که می‌بینی بهتر با سبک کارت هماهنگ باشن.
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href="/dashboard/workstyle"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            بهبود پیشنهادها
+                          </Link>
+                          <span className="text-xs text-muted-foreground">بعداً</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/70 mt-2">
+                          بدون برچسب. فقط برای بهتر شدن پیشنهادها.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
