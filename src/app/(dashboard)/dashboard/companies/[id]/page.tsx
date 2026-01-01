@@ -27,6 +27,7 @@ import {
   Check,
   Lightbulb,
   Shield,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -43,8 +44,9 @@ import type { JobAd } from '@/types/job';
 import { JOB_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, LOCATION_TYPE_LABELS } from '@/types/job';
 import { OrgInsights, OrgInsightsSkeleton } from '@/components/org/OrgInsights';
 import type { OrgIntelligenceResult } from '@/types/org-intelligence';
+import { JobQualityDashboard, JobQualityDashboardSkeleton } from '@/components/executive-dashboard';
 
-type Tab = 'overview' | 'jobs' | 'insights' | 'settings';
+type Tab = 'overview' | 'jobs' | 'job-quality' | 'insights' | 'settings';
 
 interface CompanyDetailPageProps {
   params: Promise<{ id: string }>;
@@ -176,6 +178,7 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
   const tabs: { id: Tab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
     { id: 'overview', label: 'درباره', icon: <Building2 className="w-4 h-4" /> },
     { id: 'jobs', label: 'فرصت‌های شغلی', icon: <Briefcase className="w-4 h-4" /> },
+    { id: 'job-quality', label: 'کیفیت آگهی‌ها', icon: <BarChart3 className="w-4 h-4" />, adminOnly: true },
     { id: 'insights', label: 'بینش‌های سازمانی', icon: <Lightbulb className="w-4 h-4" />, adminOnly: true },
     { id: 'settings', label: 'تنظیمات', icon: <Settings className="w-4 h-4" />, adminOnly: true },
   ];
@@ -655,6 +658,10 @@ export default function CompanyDetailPage({ params }: CompanyDetailPageProps) {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'job-quality' && isAdmin && (
+        <JobQualityDashboard companyId={id} />
       )}
 
       {activeTab === 'insights' && isAdmin && (
