@@ -406,9 +406,13 @@ Actions:
 ### Screen 4: Phase 2 Enhancement (Single Scroll Page)
 
 > **نه wizard، نه step-by-step — یک صفحه با ماژول‌های collapsible**
+>
+> هدف: **افزایش کیفیت و تناسب اپلیکیشن‌ها**
+> فلسفه: «جزئیات بهتر = متقاضی مرتبط‌تر»
+> وضعیت: **اختیاری، غیرمسدودکننده، قابل ویرایش در هر زمان**
 
 **Phase 2 Entry Points:**
-- From success screen → [بهبود آگهی]
+- From success screen → [بهبود آگهی] / [Improve job details]
 - From job detail → [Edit job] or [Improve matching]
 - From Jobs list → [Improve]
 
@@ -418,50 +422,137 @@ Actions:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
+│  │  Improve job details                    [Published] │   │
+│  │  Add details to attract better-matched candidates   │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ════════════════════════════════════════════════════════  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  ▼ 1️⃣ مهارت‌ها و تخصص                               │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  Purpose: بهبود relevance در JobMatchService        │   │
 │  │                                                      │   │
-│  │                   بهبود آگهی                         │   │
-│  │    این بخش‌ها به جذب افراد مناسب‌تر کمک می‌کنن.       │   │
+│  │  [Skill selector with taxonomy + search]            │   │
+│  │  [React] ●●○ High  [TypeScript] ●●● Required        │   │
+│  │  [Node.js] ●○○ Nice-to-have                         │   │
 │  │                                                      │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  ▼ مهارت‌ها و تخصص                                  │   │
-│  │    ─────────────────────────────────────────────    │   │
-│  │    [Skills tags input...]                           │   │
-│  │    [ذخیره]                                          │   │
+│  │  Helper: مهارت‌ها به ما کمک می‌کنن افراد             │   │
+│  │          مناسب‌تری پیشنهاد بدیم.                     │   │
+│  │                                                      │   │
+│  │  [+ Add skill]              [Save skills]           │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ▶ سطح تجربه                                 [+]   │   │
+│  │  ▶ 2️⃣ سطح تجربه                             [+]    │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  (Collapsed: Junior | Mid | Senior | Lead)          │   │
+│  │  Helper: اختیاری — فقط برای شفافیت بیشتر.           │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ▶ انتظارات سبک کاری                         [+]   │   │
+│  │  ▶ 3️⃣ انتظارات سبک کاری (کلیدی)            [+]    │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  Purpose: پایه‌ی Why this job / Team-Fit            │   │
+│  │                                                      │   │
+│  │  Autonomy:     [Low]  [Medium]  [High]              │   │
+│  │  Collaboration:[Low]  [Medium]  [High]              │   │
+│  │  Pace:         [Slow] [Steady]  [Fast]              │   │
+│  │  Structure:    [Low]  [Medium]  [High]              │   │
+│  │                                                      │   │
+│  │  Helper (Top): این بخش توضیح می‌ده نقش چگونه       │   │
+│  │                کار می‌کنه، نه اینکه چه کسی رو       │   │
+│  │                می‌خواید.                             │   │
+│  │                                                      │   │
+│  │  Helper (Bottom): برای توضیح بهتر تناسب نقش         │   │
+│  │                   استفاده می‌شه — فیلتر نیست.       │   │
+│  │                                                      │   │
+│  │  [Save work style]                                  │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ▶ اطلاعات تیم                               [+]   │   │
+│  │  ▶ 4️⃣ اطلاعات تیم                           [+]    │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  Team size: [___] (number or range)                 │   │
+│  │  Works with: [Product Manager] [Designer] [+]       │   │
+│  │  Reports to: [________________] (optional)          │   │
+│  │                                                      │   │
+│  │  Helper: کمک می‌کنه متقاضی بدونه با چه تیمی         │   │
+│  │          کار می‌کنه.                                 │   │
+│  │                                                      │   │
+│  │  [Save team info]                                   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ▶ تنظیمات استخدام (داخلی)                   [+]   │   │
+│  │  ▶ 5️⃣ اطلاعات شرکت                   [Read-only]  │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  Auto-filled from Company Entity:                   │   │
+│  │  • Environment: startup                             │   │
+│  │  • Culture: "محیط چابک و نوآور"                     │   │
+│  │                                                      │   │
+│  │  Note: برای ویرایش، به تنظیمات شرکت بروید.         │   │
+│  │  (No save button - linked to company settings)      │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  ▶ 6️⃣ تنظیمات استخدام (داخلی)               [+]    │   │
+│  │  ─────────────────────────────────────────────────  │   │
+│  │  ⚠️ NOT visible to candidates                       │   │
+│  │                                                      │   │
+│  │  Decision speed: [Fast] [Careful]                   │   │
+│  │  Remote openness: [Yes] [No]                        │   │
+│  │  Target time-to-hire: [___] days (optional)         │   │
+│  │                                                      │   │
+│  │  Helper: فقط برای بهبود فرآیند استخدام              │   │
+│  │          استفاده می‌شه.                              │   │
+│  │                                                      │   │
+│  │  [Save preferences]                                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ════════════════════════════════════════════════════════  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Changes update matching automatically              │   │
+│  │                              [View job] (Primary)   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
+```
 
-UX Rules:
+**UX Rules:**
 - هر ماژول مستقل است
 - Save per module (auto-save or button)
 - هیچ ماژولی Required نیست
 - Completion % نمایش داده نشود
 - No global "Submit" button
+- Exit without warning (Job is already published)
+- Changes affect matching immediately
 
-Publish State Behavior:
+**Publish State Behavior:**
 - Job همیشه Published می‌ماند
 - Phase 2 فقط کیفیت match را تغییر می‌دهد
 - هیچ‌وقت Job از انتشار خارج نشود
-```
+
+**Deliberately NOT included:**
+- ❌ Salary اجباری
+- ❌ Screening questions
+- ❌ Ranking یا score
+- ❌ Candidate filters
+- ❌ Personality labels/tests
+- ❌ Completion bar
+
+**Phase 2 Success KPIs:**
+- % ورود به Phase 2 ≥ 30%
+- Apply relevance ↑ (shortlist/apply ratio)
+- Time-to-decision ↓
+- No drop در publish rate
+
+**Definition of Done:**
+- Job پابلیش باقی می‌ماند
+- هر ماژول مستقل و اختیاری است
+- تغییرات بدون refactor به JobMatchService، Why this job?، Why this candidate?، Team-Fit اعمال می‌شود
+
+> **جمع‌بندی: Professional Job یعنی «کانتکست رو دقیق کن»، نه «درخواست‌ها رو زیاد کن».**
 
 ### Screen 4a: Workstyle Expectations Module (Expanded)
 
