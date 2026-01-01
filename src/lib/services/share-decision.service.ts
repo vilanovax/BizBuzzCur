@@ -12,7 +12,9 @@
 
 import sql from '@/lib/db';
 import { getProfileVersions } from './profile-version.service';
+import { calculateProfileScore } from './profile-score.service';
 import type { ProfileVersion, ProfileVersionContext } from '@/types/profile-version';
+import type { ProfileScore } from '@/types/profile-score';
 import type {
   ShareContext,
   ShareDecision,
@@ -53,8 +55,11 @@ export async function getShareDecision(
     return createNoVersionFallback(context, profileId);
   }
 
-  // Get profile completeness data
-  const completenessData = await getProfileCompleteness(profileId);
+  // Get profile score (uses the unified Profile Score service)
+  const profileScore = await calculateProfileScore(profileId);
+
+  // Convert to completeness data format for backward compatibility
+  const completenessData = convertProfileScoreToCompletenessData(profileScore);
 
   // Score all versions
   const scoredVersions = versions.map((version) => ({
@@ -79,7 +84,7 @@ export async function getShareDecision(
     ? `${appUrl}/${profileSlug}/${bestMatch.version.slug}`
     : `${appUrl}/${profileSlug}`;
 
-  // Build decision
+  // Build decision with profile score suggestions
   const decision: ShareDecision & { hasRecommendation: true } = {
     hasRecommendation: true,
     recommendedVersionId: bestMatch.version.id,
@@ -90,11 +95,44 @@ export async function getShareDecision(
     alternatives: scoredVersions
       .slice(1, 4)
       .map((sv) => createAlternative(sv.version, sv.breakdown, bestMatch.breakdown)),
-    suggestions: generateSuggestions(bestMatch.version, bestMatch.breakdown, completenessData),
+    suggestions: generateSuggestionsFromProfileScore(bestMatch.version, profileScore),
     shareUrl,
   };
 
   return decision;
+}
+
+/**
+ * Convert ProfileScore to CompletenessData for backward compatibility
+ */
+function convertProfileScoreToCompletenessData(profileScore: ProfileScore): CompletenessData {
+  return {
+    hasPhoto: profileScore.completenessBreakdown.basics >= 7,
+    hasHeadline: profileScore.completenessBreakdown.basics >= 14,
+    hasBio: profileScore.completenessBreakdown.basics >= 20,
+    hasExperience: profileScore.completenessBreakdown.experience > 0,
+    hasEducation: profileScore.completenessBreakdown.education > 0,
+    hasSkills: profileScore.completenessBreakdown.skills > 0,
+    skillCount: Math.round(profileScore.completenessBreakdown.skills / 4), // Reverse calculate
+    experienceCount: Math.round(profileScore.completenessBreakdown.experience / 12.5),
+    overallScore: profileScore.completeness / 100,
+  };
+}
+
+/**
+ * Generate suggestions from ProfileScore service
+ */
+function generateSuggestionsFromProfileScore(
+  version: ProfileVersion,
+  profileScore: ProfileScore
+): ActionItem[] {
+  // Use top suggestions from profile score
+  // Map profile-score suggestion types to share-decision ActionItem types
+  return profileScore.suggestions.slice(0, 3).map((s) => ({
+    type: s.type as ActionItem['type'], // 'add' | 'improve' | 'highlight'
+    message: s.message,
+    targetBlock: s.target,
+  }));
 }
 
 // =============================================================================
@@ -271,78 +309,10 @@ function calculateTrustScore(version: ProfileVersion, completeness: Completeness
 }
 
 // =============================================================================
-// PROFILE COMPLETENESS
+// PROFILE COMPLETENESS (Now using ProfileScore service)
 // =============================================================================
-
-/**
- * Get profile completeness data
- */
-async function getProfileCompleteness(profileId: string): Promise<CompletenessData> {
-  const [profile] = await sql<
-    [
-      {
-        photo_url: string | null;
-        headline: string | null;
-        bio: string | null;
-      }
-    ]
-  >`
-    SELECT photo_url, headline, bio
-    FROM profiles
-    WHERE id = ${profileId}
-  `;
-
-  // Count experiences
-  const [expCount] = await sql<[{ count: string }]>`
-    SELECT COUNT(*) as count
-    FROM experiences
-    WHERE profile_id = ${profileId}
-  `;
-
-  // Count education
-  const [eduCount] = await sql<[{ count: string }]>`
-    SELECT COUNT(*) as count
-    FROM educations
-    WHERE profile_id = ${profileId}
-  `;
-
-  // Count skills
-  const [skillCount] = await sql<[{ count: string }]>`
-    SELECT COUNT(*) as count
-    FROM profile_skills
-    WHERE profile_id = ${profileId}
-  `;
-
-  const hasPhoto = !!profile?.photo_url;
-  const hasHeadline = !!profile?.headline;
-  const hasBio = !!profile?.bio && profile.bio.length > 20;
-  const hasExperience = parseInt(expCount?.count || '0') > 0;
-  const hasEducation = parseInt(eduCount?.count || '0') > 0;
-  const hasSkills = parseInt(skillCount?.count || '0') > 0;
-  const experienceCount = parseInt(expCount?.count || '0');
-  const skills = parseInt(skillCount?.count || '0');
-
-  // Calculate overall score
-  let overall = 0;
-  if (hasPhoto) overall += 0.2;
-  if (hasHeadline) overall += 0.15;
-  if (hasBio) overall += 0.15;
-  if (hasExperience) overall += 0.2;
-  if (hasEducation) overall += 0.15;
-  if (hasSkills) overall += 0.15;
-
-  return {
-    hasPhoto,
-    hasHeadline,
-    hasBio,
-    hasExperience,
-    hasEducation,
-    hasSkills,
-    skillCount: skills,
-    experienceCount,
-    overallScore: overall,
-  };
-}
+// Note: Profile completeness data is now obtained from the unified ProfileScore service
+// via convertProfileScoreToCompletenessData() function above.
 
 // =============================================================================
 // REASON GENERATION (Explainability)
@@ -482,65 +452,10 @@ function getSignalStrengthMessage(version: ProfileVersion): string {
 }
 
 // =============================================================================
-// SUGGESTION GENERATION
+// SUGGESTION GENERATION (Now using ProfileScore service)
 // =============================================================================
-
-/**
- * Generate suggestions to improve the version
- */
-function generateSuggestions(
-  version: ProfileVersion,
-  breakdown: VersionScoreBreakdown,
-  completeness: CompletenessData
-): ActionItem[] {
-  const suggestions: ActionItem[] = [];
-
-  // Photo suggestion
-  if (!completeness.hasPhoto) {
-    suggestions.push({
-      type: 'add',
-      message: 'اضافه کردن عکس پروفایل اعتماد رو بالا می‌بره',
-      targetBlock: 'photo',
-    });
-  }
-
-  // Bio suggestion
-  if (!completeness.hasBio) {
-    suggestions.push({
-      type: 'add',
-      message: 'یک معرفی کوتاه بنویسید',
-      targetBlock: 'basics',
-    });
-  }
-
-  // Skills suggestion
-  if (completeness.skillCount < 3) {
-    suggestions.push({
-      type: 'add',
-      message: 'مهارت‌های بیشتری اضافه کنید (حداقل ۳ تا)',
-      targetBlock: 'skills',
-    });
-  }
-
-  // Experience suggestion
-  if (!completeness.hasExperience) {
-    suggestions.push({
-      type: 'add',
-      message: 'تجربه کاری اضافه کنید',
-      targetBlock: 'experience',
-    });
-  }
-
-  // Emphasis suggestion
-  if ((version.emphasis_rules || []).length === 0 && breakdown.signalRelevance < 0.5) {
-    suggestions.push({
-      type: 'highlight',
-      message: 'مهارت‌ها یا پروژه‌های کلیدی رو پررنگ کنید',
-    });
-  }
-
-  return suggestions.slice(0, 3); // Max 3 suggestions
-}
+// Note: Suggestions are now generated from the unified ProfileScore service
+// via generateSuggestionsFromProfileScore() function above.
 
 // =============================================================================
 // ALTERNATIVE VERSIONS
@@ -637,7 +552,8 @@ export async function getAllVersionsWithScores(
   context: ShareContext
 ): Promise<Array<{ version: ProfileVersion; score: number; breakdown: VersionScoreBreakdown }>> {
   const versions = await getProfileVersions(profileId);
-  const completeness = await getProfileCompleteness(profileId);
+  const profileScore = await calculateProfileScore(profileId);
+  const completeness = convertProfileScoreToCompletenessData(profileScore);
 
   return versions.map((version) => {
     const breakdown = scoreVersion(version, context, completeness);
