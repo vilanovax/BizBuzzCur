@@ -2,9 +2,23 @@
 
 ## Overview
 
+> **Job Creation در BizBuzz یک دکمه نیست؛ یک مکالمه‌ی کوتاه با شرکت است.**
+
 Two-phase job creation system:
 - **Phase 1 (Quick Job)**: Publish in ≤4 minutes with minimal fields
-- **Phase 2 (Professional Job)**: Optional enhancement for better matching
+- **Phase 2 (Professional Job)**: Optional enhancement for better matching (NOT a wizard)
+
+### KPIs
+- Time to publish ≤ 4 min
+- % draft → publish ≥ 80%
+- % Phase 2 entry ≥ 30%
+
+### Deliberately Excluded
+- ❌ Salary required
+- ❌ Screening questions
+- ❌ Mandatory JD
+- ❌ Candidate filters
+- ❌ Personality tests
 
 ---
 
@@ -15,24 +29,31 @@ Two-phase job creation system:
 │                      ENTRY POINTS                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  1. Dashboard Sidebar                                       │
-│     [آگهی‌های شغلی] → /dashboard/jobs                       │
-│     └── [+ ایجاد آگهی جدید] button                          │
-│                                                             │
-│  2. Company Detail Page                                     │
+│  1. Company Dashboard                                       │
 │     /dashboard/companies/[id]                               │
-│     └── Jobs Tab → [+ آگهی جدید] button                     │
+│     └── CTA: [Create job] - Entity context is known         │
+│                                                             │
+│  2. Jobs Tab                                                │
+│     /dashboard/jobs                                         │
+│     └── CTA: [New job]                                      │
+│     └── If multiple entities → modal to select Entity       │
 │                                                             │
 │  3. Empty State (No Jobs)                                   │
 │     /dashboard/jobs (when empty)                            │
 │     └── [اولین آگهی رو بساز] CTA                            │
 │                                                             │
-│  4. Quick Action (Future)                                   │
-│     Dashboard home → Quick Actions card                     │
-│     └── [استخدام کن] shortcut                               │
-│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Step 0 — Context Confirmation (Silent)
+
+**System-level, no separate screen**
+
+- Job belongs to: Company / Unit / Booth (Entity)
+- If only one Entity → auto-select
+- If multiple Entities → modal to select
+
+> User doesn't feel like entering complex settings
 
 ---
 
@@ -382,7 +403,14 @@ Actions:
 - [بازگشت به آگهی‌های من]: Go to /dashboard/jobs
 ```
 
-### Screen 4: Phase 2 Enhancement Hub
+### Screen 4: Phase 2 Enhancement (Single Scroll Page)
+
+> **نه wizard، نه step-by-step — یک صفحه با ماژول‌های collapsible**
+
+**Phase 2 Entry Points:**
+- From success screen → [بهبود آگهی]
+- From job detail → [Edit job] or [Improve matching]
+- From Jobs list → [Improve]
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -392,59 +420,47 @@ Actions:
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                                                      │   │
 │  │                   بهبود آگهی                         │   │
-│  │     هر بخش که اضافه کنی، کیفیت تطابق بالاتر می‌ره    │   │
+│  │    این بخش‌ها به جذب افراد مناسب‌تر کمک می‌کنن.       │   │
 │  │                                                      │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ✓ اطلاعات اولیه                          تکمیل شده │   │
-│  │    عنوان، توضیح، نوع حضور                           │   │
+│  │  ▼ مهارت‌ها و تخصص                                  │   │
+│  │    ─────────────────────────────────────────────    │   │
+│  │    [Skills tags input...]                           │   │
+│  │    [ذخیره]                                          │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ○ انتظارات سبک کاری                         [+]   │   │
-│  │    استقلال، همکاری، سرعت، ساختار                    │   │
-│  │    ~ ۲ دقیقه                                        │   │
+│  │  ▶ سطح تجربه                                 [+]   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ○ اطلاعات تیم                               [+]   │   │
-│  │    اندازه تیم، همکاران، گزارش‌دهی                   │   │
-│  │    ~ ۱ دقیقه                                        │   │
+│  │  ▶ انتظارات سبک کاری                         [+]   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ○ مهارت‌ها و تجربه                          [+]   │   │
-│  │    سطح تجربه، مهارت‌های لازم و ترجیحی               │   │
-│  │    ~ ۳ دقیقه                                        │   │
+│  │  ▶ اطلاعات تیم                               [+]   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  ○ حقوق و مزایا                              [+]   │   │
-│  │    بازه حقوق، نوع قرارداد                           │   │
-│  │    ~ ۱ دقیقه                                        │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  ○ توضیحات کامل                              [+]   │   │
-│  │    شرح شغل، مسئولیت‌ها، شرایط                       │   │
-│  │    ~ ۵ دقیقه                                        │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              [تمام شد]  (Primary)                   │   │
+│  │  ▶ تنظیمات استخدام (داخلی)                   [+]   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 
-Behavior:
-- Each module is a card that expands inline or opens modal
-- Progress persists immediately (no final submit)
-- User can complete in any order
-- User can leave and return anytime
-- [تمام شد] returns to job detail page
+UX Rules:
+- هر ماژول مستقل است
+- Save per module (auto-save or button)
+- هیچ ماژولی Required نیست
+- Completion % نمایش داده نشود
+- No global "Submit" button
+
+Publish State Behavior:
+- Job همیشه Published می‌ماند
+- Phase 2 فقط کیفیت match را تغییر می‌دهد
+- هیچ‌وقت Job از انتشار خارج نشود
 ```
 
 ### Screen 4a: Workstyle Expectations Module (Expanded)
@@ -800,13 +816,10 @@ Fields:
 /dashboard/jobs/new?step=2               # Phase 1 wizard (Step 2)
 /dashboard/jobs/[id]                     # Job detail/manage page
 /dashboard/jobs/[id]/edit                # Edit job (Phase 1 fields)
-/dashboard/jobs/[id]/enhance             # Phase 2 enhancement hub
-/dashboard/jobs/[id]/enhance/workstyle   # Workstyle module
-/dashboard/jobs/[id]/enhance/team        # Team snapshot module
-/dashboard/jobs/[id]/enhance/skills      # Skills module
-/dashboard/jobs/[id]/enhance/salary      # Compensation module
-/dashboard/jobs/[id]/enhance/description # Full description module
+/dashboard/jobs/[id]/enhance             # Phase 2: Single scroll page with collapsible modules
 ```
+
+Note: Phase 2 is a single page, NOT separate routes per module.
 
 ---
 
